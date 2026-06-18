@@ -1,0 +1,422 @@
+@import "tailwindcss";
+
+@theme {
+    --font-poppins: "Poppins", sans-serif;
+    --font-cairo: "Cairo", sans-serif;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant rtl ([dir="rtl"] &);
+
+body {
+    @apply bg-white text-slate-800 dark:bg-gray-950 dark:text-white text-sm font-poppins antialiased;
+}
+
+[dir="rtl"] body {
+    font-family: var(--font-cairo), "Cairo", sans-serif;
+}
+
+button {
+    @apply cursor-pointer;
+}
+
+/* ========================================
+   DASHBOARD — GLASS SYSTEM
+   Scoped to .dash-root so public pages
+   are never affected.
+   ======================================== */
+
+/* ── Dark mode tokens (default) ── */
+.dash-root {
+  --dash-primary-rgb: 20, 184, 166;
+  --dash-gradient-from: #14b8a6;
+  --dash-gradient-to: #0d9488;
+  --dash-bg: #060c10;
+
+  /* RGB references for glass bg and borders.
+     Dark:  white-on-dark   Light: dark-on-light */
+  --dash-glass-a: 255, 255, 255;
+  --dash-border-a: 255, 255, 255;
+
+  --glass-opacity: 0.14;
+  --glass-blur: 28px;
+  --glass-border-opacity: 0.18;
+  --glass-saturation: 180%;
+  --glass-hover-add: 0.04;
+  --glass-border-hover-add: 0.07;
+
+  --dt-primary: rgba(255,255,255,1);
+  --dt-secondary: rgba(255,255,255,0.75);
+  --dt-tertiary: rgba(255,255,255,0.55);
+  --dt-muted: rgba(255,255,255,0.35);
+}
+
+/* ── Light mode override ── */
+.dash-root.dash-light {
+  --dash-bg: #f0fdf9;
+  --dash-border-a: 15, 23, 42;
+  --glass-opacity: 0.60;
+  --glass-border-opacity: 0.09;
+  --glass-hover-add: 0.08;
+  --glass-border-hover-add: 0.04;
+  --dt-primary: rgba(15,23,42,1);
+  --dt-secondary: rgba(15,23,42,0.72);
+  --dt-tertiary: rgba(15,23,42,0.52);
+  --dt-muted: rgba(15,23,42,0.35);
+}
+
+/* ── Glass base ── */
+.dash-glass {
+  background: rgba(var(--dash-glass-a), var(--glass-opacity));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid rgba(var(--dash-border-a), var(--glass-border-opacity));
+  transition: background 0.3s cubic-bezier(0.4,0,0.2,1),
+              border-color 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.dash-glass:hover {
+  background: rgba(var(--dash-glass-a), calc(var(--glass-opacity) + var(--glass-hover-add)));
+  border-color: rgba(var(--dash-border-a), calc(var(--glass-border-opacity) + var(--glass-border-hover-add)));
+}
+
+/* ── Card ── */
+.dash-card {
+  background: rgba(var(--dash-glass-a), var(--glass-opacity));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid rgba(var(--dash-border-a), var(--glass-border-opacity));
+  border-radius: 1rem;
+  transition: background 0.3s cubic-bezier(0.4,0,0.2,1),
+              border-color 0.3s cubic-bezier(0.4,0,0.2,1),
+              transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.dash-card:hover {
+  background: rgba(var(--dash-glass-a), calc(var(--glass-opacity) + var(--glass-hover-add)));
+  border-color: rgba(var(--dash-border-a), calc(var(--glass-border-opacity) + var(--glass-border-hover-add)));
+  transform: translateY(-2px);
+}
+
+/* ── Sidebar — solid card with teal glow, same recipe as login/register card ── */
+.dash-sidebar {
+  /* Dark: near-opaque dark surface, barely lets any bg bleed through */
+  background: rgba(6, 12, 16, 0.94);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),   /* inner top highlight */
+    4px 0 40px rgba(0, 0, 0, 0.50),             /* depth shadow */
+    0 0 80px rgba(20, 184, 166, 0.14),           /* teal ambient glow (like login outer ring) */
+    20px 0 120px rgba(20, 184, 166, 0.08);       /* wider teal bloom to the right */
+}
+
+.dash-root.dash-light .dash-sidebar {
+  /* Light: near-opaque light surface */
+  background: rgba(240, 253, 249, 0.96);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    4px 0 40px rgba(15, 23, 42, 0.10),
+    0 0 70px rgba(20, 184, 166, 0.14),
+    20px 0 100px rgba(20, 184, 166, 0.08);
+}
+
+/* ── Sidebar layout wrapper ──
+   Fixed overlay on ALL screen sizes: slides in from inline-start edge.
+   The blur/glass overlay behind it is controlled by .dash-overlay.        */
+.dash-sidebar-layout {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: 50;
+  width: 16rem;
+  transform: translateX(-105%);
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[dir="rtl"] .dash-sidebar-layout {
+  transform: translateX(105%);
+}
+
+.dash-sidebar-layout.is-open {
+  transform: translateX(0);
+  box-shadow: 4px 0 40px rgba(0, 0, 0, 0.36), 0 0 80px rgba(20, 184, 166, 0.09);
+}
+
+[dir="rtl"] .dash-sidebar-layout.is-open {
+  box-shadow: -4px 0 40px rgba(0, 0, 0, 0.36), 0 0 80px rgba(20, 184, 166, 0.09);
+}
+
+.dash-light .dash-sidebar-layout.is-open {
+  box-shadow: 4px 0 40px rgba(15, 23, 42, 0.16), 0 0 80px rgba(20, 184, 166, 0.10);
+}
+
+[dir="rtl"] .dash-light .dash-sidebar-layout.is-open {
+  box-shadow: -4px 0 40px rgba(15, 23, 42, 0.16), 0 0 80px rgba(20, 184, 166, 0.10);
+}
+
+/* ── Glass overlay — covers rest of screen when sidebar is open (all sizes) ── */
+.dash-overlay {
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  background: rgba(0, 0, 0, 0.55);
+  transition: opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-root.dash-light .dash-overlay {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  background: rgba(6, 12, 16, 0.40);
+}
+
+/* ── Header — solid card with teal glow, same recipe as login/register card ── */
+.dash-header {
+  background: rgba(6, 12, 16, 0.92);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),   /* inner top highlight */
+    0 4px 40px rgba(0, 0, 0, 0.40),             /* depth shadow downward */
+    0 0 60px rgba(20, 184, 166, 0.10),           /* teal ambient glow */
+    0 8px 80px rgba(20, 184, 166, 0.06);         /* wider teal bloom downward */
+}
+
+.dash-root.dash-light .dash-header {
+  background: rgba(240, 253, 249, 0.94);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border-bottom: 1px solid rgba(20, 184, 166, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 30px rgba(15, 23, 42, 0.08),
+    0 0 50px rgba(20, 184, 166, 0.10),
+    0 8px 60px rgba(20, 184, 166, 0.06);
+}
+
+/* ── Stat card ── */
+.dash-stat-card {
+  background: rgba(var(--dash-glass-a), var(--glass-opacity));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid rgba(var(--dash-border-a), var(--glass-border-opacity));
+  border-radius: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s cubic-bezier(0.4,0,0.2,1),
+              border-color 0.3s cubic-bezier(0.4,0,0.2,1),
+              transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.dash-stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 60% 40% at 10% 0%,
+    rgba(var(--dash-primary-rgb), 0.12) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.dash-stat-card:hover {
+  background: rgba(var(--dash-glass-a), calc(var(--glass-opacity) + var(--glass-hover-add)));
+  border-color: rgba(var(--dash-border-a), calc(var(--glass-border-opacity) + var(--glass-border-hover-add)));
+  transform: translateY(-3px);
+}
+
+/* ── Dropdown panels — fully opaque, no see-through ── */
+.dash-dropdown {
+  background: #0c1920;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 1rem;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    0 0 60px rgba(20, 184, 166, 0.06);
+}
+
+.dash-root.dash-light .dash-dropdown {
+  background: #ffffff;
+  border: 1px solid rgba(20, 184, 166, 0.22);
+  box-shadow:
+    0 8px 32px rgba(15, 23, 42, 0.14),
+    0 0 40px rgba(20, 184, 166, 0.07);
+}
+
+.dash-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--dt-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+  text-decoration: none;
+  width: 100%;
+  text-align: start;
+  cursor: pointer;
+}
+
+.dash-dropdown-item:hover {
+  background: rgba(var(--dash-border-a), 0.07);
+  color: var(--dt-primary);
+}
+
+.dash-dropdown-item:hover .dash-dropdown-item-icon {
+  color: #14b8a6;
+}
+
+.dash-dropdown-item-icon {
+  flex-shrink: 0;
+  color: var(--dt-muted);
+  transition: color 0.15s ease;
+}
+
+.dash-dropdown-divider {
+  border-color: rgba(var(--dash-border-a), 0.09);
+  margin: 0.375rem 0;
+}
+
+/* ── Nav ── */
+.dash-nav-active {
+  background: linear-gradient(135deg, var(--dash-gradient-from), var(--dash-gradient-to));
+  color: #fff;
+  border-radius: 0.625rem;
+}
+
+.dash-nav-item {
+  border-radius: 0.625rem;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.dash-nav-item:hover:not(.dash-nav-active) {
+  background: rgba(var(--dash-border-a), 0.07);
+  color: var(--dt-secondary);
+}
+
+/* ── Gradient utils ── */
+.dash-text-gradient {
+  background: linear-gradient(135deg, var(--dash-gradient-from), var(--dash-gradient-to));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dash-bg-gradient {
+  background: linear-gradient(135deg, var(--dash-gradient-from), var(--dash-gradient-to));
+}
+
+/* ── Icon wrapper ── */
+.dash-icon-wrap {
+  background: rgba(var(--dash-primary-rgb), 0.15);
+  border: 1px solid rgba(var(--dash-primary-rgb), 0.25);
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+}
+
+.dash-stat-card:hover .dash-icon-wrap {
+  background: rgba(var(--dash-primary-rgb), 0.22);
+}
+
+/* ── Scrollbar (uses border-a for auto light/dark) ── */
+.dash-root ::-webkit-scrollbar { width: 5px; height: 5px; }
+.dash-root ::-webkit-scrollbar-track { background: rgba(var(--dash-border-a), 0.04); border-radius: 3px; }
+.dash-root ::-webkit-scrollbar-thumb { background: rgba(var(--dash-border-a), 0.14); border-radius: 3px; }
+.dash-root ::-webkit-scrollbar-thumb:hover { background: rgba(var(--dash-border-a), 0.22); }
+
+/* ── Animations ── */
+@keyframes dashFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dashScaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes dashSlideInLtr {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes dashSlideInRtl {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.dash-anim-up {
+  opacity: 0;
+  animation: dashFadeUp 0.45s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+.dash-anim-scale {
+  opacity: 0;
+  animation: dashScaleIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+.dash-anim-right {
+  opacity: 0;
+  animation: dashSlideInLtr 0.4s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+[dir="rtl"] .dash-anim-right {
+  animation-name: dashSlideInRtl;
+}
+
+/* ── Progress ── */
+.dash-progress-track {
+  background: rgba(var(--dash-border-a), 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.dash-progress-fill {
+  background: linear-gradient(90deg, var(--dash-gradient-from), var(--dash-gradient-to));
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Badge ── */
+.dash-badge {
+  background: rgba(var(--dash-primary-rgb), 0.15);
+  color: var(--dash-gradient-from);
+  border: 1px solid rgba(var(--dash-primary-rgb), 0.20);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  letter-spacing: 0.03em;
+}
+
+/* ── Divider ── */
+.dash-divider {
+  border-color: rgba(var(--dash-border-a), 0.08);
+}
+
+/* ── Pill button ── */
+.dash-pill-btn {
+  background: rgba(var(--dash-glass-a), var(--glass-opacity));
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid rgba(var(--dash-border-a), var(--glass-border-opacity));
+  border-radius: 999px;
+  transition: background 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
+}
+
+.dash-pill-btn:hover {
+  background: rgba(var(--dash-glass-a), calc(var(--glass-opacity) + var(--glass-hover-add)));
+  border-color: rgba(var(--dash-border-a), calc(var(--glass-border-opacity) + var(--glass-border-hover-add)));
+  transform: translateY(-1px);
+}
