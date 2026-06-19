@@ -1,19 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Tag, ToggleLeft, ToggleRight, Loader2, X, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag, ToggleLeft, ToggleRight, Loader2, X, Check, ArchiveRestore, Archive } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import {
     adminFetchDiscounts,
     adminCreateDiscount,
     adminUpdateDiscount,
     adminDeleteDiscount,
+    adminRestoreDiscount,
+    fetchPublishedCourses,
 } from "@/utils/academyApi";
 
 const EMPTY_FORM = {
     code: "", description: "", discount_type: "PERCENTAGE", value: "",
-    max_uses: "", valid_from: "", valid_until: "", is_active: true, course_id: "",
+    max_uses: "", valid_from: "", valid_until: "", is_active: true,
+    scope: "global_promo", course_id: "",
 };
+
+function ScopeBadge({ discount }) {
+    const { t } = useLocale();
+    const cfg = discount.is_system
+        ? { cls: "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800/40", label: t("disc_scope_system") }
+        : discount.course_id
+            ? { cls: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600", label: t("disc_scope_course") }
+            : { cls: "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/40", label: t("disc_scope_global") };
+    return (
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${cfg.cls}`}>
+            {cfg.label}
+        </span>
+    );
+}
 
 function Badge({ active }) {
     const { t } = useLocale();
@@ -43,8 +60,49 @@ function TypeBadge({ type }) {
     );
 }
 
-function DiscountFormModal({ discount, onClose, onSaved }) {
+function ConfirmDeleteModal({ discount, onConfirm, onCancel, loading }) {
     const { t } = useLocale();
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                        <Trash2 size={18} className="text-red-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t("disc_delete_title")}</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t("disc_delete_desc")}</p>
+                    </div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-2.5 mb-4">
+                    <span className="font-mono font-bold text-teal-600 dark:text-teal-400 text-sm">{discount.code}</span>
+                    {discount.description && (
+                        <p className="text-xs text-slate-400 mt-0.5">{discount.description}</p>
+                    )}
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl px-3 py-2 mb-4">
+                    {t("disc_delete_code_note")}
+                </p>
+                <div className="flex gap-3">
+                    <button onClick={onCancel} disabled={loading}
+                        className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50">
+                        {t("disc_cancel")}
+                    </button>
+                    <button onClick={onConfirm} disabled={loading}
+                        className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 transition text-white text-sm font-semibold flex items-center justify-center gap-2">
+                        {loading && <Loader2 size={14} className="animate-spin" />}
+                        {t("disc_delete_confirm_btn")}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function DiscountFormModal({ discount, onClose, onSaved, hasActiveGlobal }) {
+    const { t } = useLocale();
+    const scopeFromDiscount = (d) => d.is_system ? "system" : d.course_id ? "course" : "global_promo";
     const [form, setForm]   = useState(discount ? {
         code:          discount.code,
         description:   discount.description ?? "",
@@ -54,10 +112,20 @@ function DiscountFormModal({ discount, onClose, onSaved }) {
         valid_from:    discount.valid_from ? discount.valid_from.slice(0, 16) : "",
         valid_until:   discount.valid_until ? discount.valid_until.slice(0, 16) : "",
         is_active:     discount.is_active,
+        scope:         scopeFromDiscount(discount),
         course_id:     discount.course_id ?? "",
     } : { ...EMPTY_FORM });
-    const [saving, setSaving] = useState(false);
-    const [error,  setError]  = useState("");
+    const [saving, setSaving]   = useState(false);
+    const [error,  setError]    = useState("");
+    const [courses, setCourses] = useState([]);
+    const [loadingCourses, setLoadingCourses] = useState(false);
+
+    useEffect(() => {
+        setLoadingCourses(true);
+        fetchPublishedCourses({ limit: 200 })
+            .then(setCourses)
+            .finally(() => setLoadingCourses(false));
+    }, []);
 
     const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -73,7 +141,8 @@ function DiscountFormModal({ discount, onClose, onSaved }) {
             valid_from:    form.valid_from || undefined,
             valid_until:   form.valid_until || undefined,
             is_active:     form.is_active,
-            course_id:     form.course_id || undefined,
+            is_system:     form.scope === "system",
+            course_id:     form.scope === "course" ? (form.course_id || undefined) : null,
         };
         try {
             const saved = discount
@@ -81,7 +150,8 @@ function DiscountFormModal({ discount, onClose, onSaved }) {
                 : await adminCreateDiscount(payload);
             onSaved(saved);
         } catch (err) {
-            setError(err?.body?.detail || t("disc_form_error"));
+            const code = err?.body?.error_code;
+            setError(code === "GLOBAL_DISCOUNT_EXISTS" ? t("disc_global_exists_error") : (err?.body?.detail || t("disc_form_error")));
         } finally { setSaving(false); }
     }
 
@@ -100,9 +170,9 @@ function DiscountFormModal({ discount, onClose, onSaved }) {
                     {/* Code */}
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">{t("disc_field_code")}</label>
-                        <input value={form.code} onChange={e => set("code", e.target.value)} disabled={!!discount}
+                        <input value={form.code} onChange={e => set("code", e.target.value)}
                             placeholder="SUMMER20"
-                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-400 disabled:opacity-60 font-mono uppercase"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-400 font-mono uppercase"
                         />
                     </div>
 
@@ -161,6 +231,54 @@ function DiscountFormModal({ discount, onClose, onSaved }) {
                         </div>
                     </div>
 
+                    {/* Scope */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{t("disc_field_scope")}</label>
+                        <div className="flex flex-col gap-2">
+                            {[
+                                { value: "system",      labelKey: "disc_scope_system",      descKey: "disc_scope_system_desc" },
+                                { value: "global_promo",labelKey: "disc_scope_global",      descKey: "disc_scope_global_desc" },
+                                { value: "course",      labelKey: "disc_scope_course",      descKey: "disc_scope_course_desc" },
+                            ].map(({ value: s, labelKey, descKey }) => (
+                                <label key={s} className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition ${
+                                    form.scope === s
+                                        ? "border-teal-400 bg-teal-50 dark:bg-teal-900/20"
+                                        : "border-slate-200 dark:border-slate-700"
+                                }`}>
+                                    <input type="radio" name="scope" value={s} checked={form.scope === s}
+                                        onChange={() => set("scope", s)}
+                                        className="mt-0.5 accent-teal-500 shrink-0" />
+                                    <div>
+                                        <p className={`text-sm font-semibold ${form.scope === s ? "text-teal-700 dark:text-teal-300" : "text-slate-700 dark:text-slate-200"}`}>
+                                            {t(labelKey)}
+                                        </p>
+                                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{t(descKey)}</p>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        {form.scope === "course" && (
+                            <div className="mt-2">
+                                <select
+                                    value={form.course_id}
+                                    onChange={e => set("course_id", e.target.value)}
+                                    disabled={loadingCourses}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-400 disabled:opacity-60"
+                                >
+                                    <option value="">{loadingCourses ? t("disc_courses_loading") : t("disc_courses_placeholder")}</option>
+                                    {courses.map(c => (
+                                        <option key={c.id} value={c.id}>{c.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {form.scope === "system" && form.is_active && hasActiveGlobal && !(discount && discount.is_system) && (
+                            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl px-3 py-2">
+                                {t("disc_global_exists_warning")}
+                            </p>
+                        )}
+                    </div>
+
                     {/* Active toggle */}
                     <div className="flex items-center gap-3">
                         <button type="button" onClick={() => set("is_active", !form.is_active)}>
@@ -193,14 +311,28 @@ function DiscountFormModal({ discount, onClose, onSaved }) {
 
 export default function DiscountsPage() {
     const { t } = useLocale();
-    const [discounts, setDiscounts] = useState([]);
-    const [loading, setLoading]     = useState(true);
-    const [modal, setModal]         = useState(null); // null | "create" | discount object
-    const [deleting, setDeleting]   = useState(null);
+    const [discounts, setDiscounts]       = useState([]);
+    const [loading, setLoading]           = useState(true);
+    const [modal, setModal]               = useState(null);
+    const [deleting, setDeleting]         = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState(null); // discount object | null
+    const [restoring, setRestoring]       = useState(null);
+    const [showArchived, setShowArchived] = useState(false);
 
-    useEffect(() => {
-        adminFetchDiscounts().then(setDiscounts).finally(() => setLoading(false));
-    }, []);
+    function reload(archived) {
+        setLoading(true);
+        adminFetchDiscounts({ includeArchived: archived ?? showArchived })
+            .then(setDiscounts)
+            .finally(() => setLoading(false));
+    }
+
+    useEffect(() => { reload(false); }, []);
+
+    function handleToggleArchived() {
+        const next = !showArchived;
+        setShowArchived(next);
+        reload(next);
+    }
 
     function handleSaved(saved) {
         setDiscounts(prev => {
@@ -210,21 +342,111 @@ export default function DiscountsPage() {
         setModal(null);
     }
 
-    async function handleDelete(id) {
-        if (!confirm(t("disc_confirm_delete"))) return;
+    async function handleDelete() {
+        if (!confirmDelete) return;
+        const id = confirmDelete.id;
         setDeleting(id);
         try {
             await adminDeleteDiscount(id);
-            setDiscounts(prev => prev.filter(d => d.id !== id));
-        } finally { setDeleting(null); }
+            setDiscounts(prev => showArchived
+                ? prev.map(d => d.id === id ? { ...d, is_deleted: true, is_active: false } : d)
+                : prev.filter(d => d.id !== id)
+            );
+        } finally {
+            setDeleting(null);
+            setConfirmDelete(null);
+        }
+    }
+
+    async function handleRestore(disc) {
+        setRestoring(disc.id);
+        try {
+            const restored = await adminRestoreDiscount(disc.id);
+            setDiscounts(prev => prev.map(d => d.id === restored.id ? restored : d));
+        } finally { setRestoring(null); }
     }
 
     async function handleToggle(disc) {
+        if (disc.is_deleted) return;
         try {
             const updated = await adminUpdateDiscount(disc.id, { is_active: !disc.is_active });
             setDiscounts(prev => prev.map(d => d.id === disc.id ? updated : d));
         } catch {}
     }
+
+    const active   = discounts.filter(d => !d.is_deleted);
+    const archived = discounts.filter(d => d.is_deleted);
+
+    function DiscountRow({ d, i }) {
+        const isArchived = d.is_deleted;
+        return (
+            <tr key={d.id} className={`border-t border-slate-100 dark:border-slate-700/50 ${
+                isArchived
+                    ? "opacity-60 bg-slate-50/80 dark:bg-slate-800/40"
+                    : i % 2 === 0 ? "" : "bg-slate-50/50 dark:bg-slate-800/20"
+            }`}>
+                <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`font-mono font-semibold ${isArchived ? "line-through text-slate-400 dark:text-slate-500" : "text-teal-600 dark:text-teal-400"}`}>
+                            {d.code}
+                        </span>
+                        {isArchived && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800/40">
+                                {t("disc_archived")}
+                            </span>
+                        )}
+                    </div>
+                    {d.description && <p className="text-xs text-slate-400 mt-0.5">{d.description}</p>}
+                </td>
+                <td className="px-5 py-3.5"><ScopeBadge discount={d} /></td>
+                <td className="px-5 py-3.5"><TypeBadge type={d.discount_type} /></td>
+                <td className="px-5 py-3.5 font-semibold text-slate-700 dark:text-slate-200">
+                    {d.discount_type === "PERCENTAGE" ? `${d.value}%` : `${Number(d.value).toLocaleString()} EGP`}
+                </td>
+                <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">
+                    {d.used_count}{d.max_uses != null ? ` / ${d.max_uses}` : ""}
+                </td>
+                <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-xs">
+                    {d.valid_until ? new Date(d.valid_until).toLocaleDateString() : "—"}
+                </td>
+                <td className="px-5 py-3.5">
+                    {isArchived ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border bg-slate-100 dark:bg-slate-700 text-slate-400 border-slate-200 dark:border-slate-600">
+                            <Archive size={10} /> {t("disc_archived")}
+                        </span>
+                    ) : (
+                        <button onClick={() => handleToggle(d)} className="flex items-center">
+                            <Badge active={d.is_active} />
+                        </button>
+                    )}
+                </td>
+                <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-1 justify-end">
+                        {isArchived ? (
+                            <button onClick={() => handleRestore(d)} disabled={restoring === d.id}
+                                title={t("disc_restore_btn")}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-teal-500 transition disabled:opacity-40">
+                                {restoring === d.id ? <Loader2 size={15} className="animate-spin" /> : <ArchiveRestore size={15} />}
+                            </button>
+                        ) : (
+                            <>
+                                <button onClick={() => setModal(d)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-teal-500 transition">
+                                    <Pencil size={15} />
+                                </button>
+                                <button onClick={() => setConfirmDelete(d)} disabled={deleting === d.id}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 transition disabled:opacity-40">
+                                    {deleting === d.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </td>
+            </tr>
+        );
+    }
+
+    const rows = showArchived ? discounts : active;
 
     return (
         <div className="p-6 max-w-5xl mx-auto">
@@ -234,13 +456,29 @@ export default function DiscountsPage() {
                     <h1 className="text-xl font-bold" style={{ color: "var(--dt-primary)" }}>{t("disc_title")}</h1>
                     <p className="text-sm mt-0.5" style={{ color: "var(--dt-muted)" }}>{t("disc_subtitle")}</p>
                 </div>
-                <button
-                    onClick={() => setModal("create")}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition"
-                >
-                    <Plus size={16} />
-                    {t("disc_create_btn")}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleToggleArchived}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-sm font-semibold transition ${
+                            showArchived
+                                ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                                : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300"
+                        }`}
+                    >
+                        <Archive size={15} />
+                        {t("disc_show_archived")}
+                        {archived.length > 0 && showArchived && (
+                            <span className="ml-1 bg-amber-400 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{archived.length}</span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setModal("create")}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition"
+                    >
+                        <Plus size={16} />
+                        {t("disc_create_btn")}
+                    </button>
+                </div>
             </div>
 
             {/* Table */}
@@ -248,7 +486,7 @@ export default function DiscountsPage() {
                 <div className="flex items-center justify-center py-20">
                     <Loader2 size={28} className="animate-spin text-teal-500" />
                 </div>
-            ) : discounts.length === 0 ? (
+            ) : rows.length === 0 ? (
                 <div className="text-center py-20">
                     <Tag size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" strokeWidth={1} />
                     <p className="font-semibold text-slate-600 dark:text-slate-300">{t("disc_empty_title")}</p>
@@ -260,6 +498,7 @@ export default function DiscountsPage() {
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-800/60 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                 <th className="text-start px-5 py-3 font-semibold">{t("disc_col_code")}</th>
+                                <th className="text-start px-5 py-3 font-semibold">{t("disc_col_scope")}</th>
                                 <th className="text-start px-5 py-3 font-semibold">{t("disc_col_type")}</th>
                                 <th className="text-start px-5 py-3 font-semibold">{t("disc_col_value")}</th>
                                 <th className="text-start px-5 py-3 font-semibold">{t("disc_col_uses")}</th>
@@ -269,41 +508,7 @@ export default function DiscountsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {discounts.map((d, i) => (
-                                <tr key={d.id} className={`border-t border-slate-100 dark:border-slate-700/50 ${i % 2 === 0 ? "" : "bg-slate-50/50 dark:bg-slate-800/20"}`}>
-                                    <td className="px-5 py-3.5">
-                                        <span className="font-mono font-semibold text-teal-600 dark:text-teal-400">{d.code}</span>
-                                        {d.description && <p className="text-xs text-slate-400 mt-0.5">{d.description}</p>}
-                                    </td>
-                                    <td className="px-5 py-3.5"><TypeBadge type={d.discount_type} /></td>
-                                    <td className="px-5 py-3.5 font-semibold text-slate-700 dark:text-slate-200">
-                                        {d.discount_type === "PERCENTAGE" ? `${d.value}%` : `${Number(d.value).toLocaleString()} EGP`}
-                                    </td>
-                                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">
-                                        {d.used_count}{d.max_uses != null ? ` / ${d.max_uses}` : ""}
-                                    </td>
-                                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-xs">
-                                        {d.valid_until ? new Date(d.valid_until).toLocaleDateString() : "—"}
-                                    </td>
-                                    <td className="px-5 py-3.5">
-                                        <button onClick={() => handleToggle(d)} className="flex items-center">
-                                            <Badge active={d.is_active} />
-                                        </button>
-                                    </td>
-                                    <td className="px-5 py-3.5">
-                                        <div className="flex items-center gap-1 justify-end">
-                                            <button onClick={() => setModal(d)}
-                                                className="p-1.5 rounded-lg text-slate-400 hover:text-teal-500 transition">
-                                                <Pencil size={15} />
-                                            </button>
-                                            <button onClick={() => handleDelete(d.id)} disabled={deleting === d.id}
-                                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 transition disabled:opacity-40">
-                                                {deleting === d.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {rows.map((d, i) => <DiscountRow key={d.id} d={d} i={i} />)}
                         </tbody>
                     </table>
                 </div>
@@ -314,6 +519,16 @@ export default function DiscountsPage() {
                     discount={modal === "create" ? null : modal}
                     onClose={() => setModal(null)}
                     onSaved={handleSaved}
+                    hasActiveGlobal={discounts.some(d => d.is_system && d.is_active && !d.is_deleted)}
+                />
+            )}
+
+            {confirmDelete && (
+                <ConfirmDeleteModal
+                    discount={confirmDelete}
+                    onConfirm={handleDelete}
+                    onCancel={() => setConfirmDelete(null)}
+                    loading={!!deleting}
                 />
             )}
         </div>

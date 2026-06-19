@@ -208,6 +208,7 @@ export default function CourseDetailContent({ courseId }) {
     const [discountChecking, setDiscountChecking] = useState(false);
     const [enrolling, setEnrolling]     = useState(false);
     const [enrollError, setEnrollError] = useState("");
+    const [paymentType, setPaymentType] = useState("FULL");
 
     const isAdmin    = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
     const isLoggedIn = !!user;
@@ -243,9 +244,24 @@ export default function CourseDetailContent({ courseId }) {
     function openEnrollModal() {
         if (!isLoggedIn) { router.push("/login"); return; }
         setDiscountCode(""); setDiscountInfo(null); setDiscountError(""); setEnrollError("");
+        setPaymentType("FULL");
         const firstActive = (course?.batches ?? []).find(b => b.status === "UPCOMING" || b.status === "ONGOING");
         setSelectedBatch(firstActive?.id ?? null);
         setShowModal(true);
+    }
+
+    function computeMonthlyBreakdown(effectivePrice) {
+        const batch = (course?.batches ?? []).find(b => b.id === selectedBatch);
+        let months = null;
+        if (batch?.start_date && batch?.end_date) {
+            const days = (new Date(batch.end_date) - new Date(batch.start_date)) / (1000 * 60 * 60 * 24);
+            months = Math.max(1, Math.round(days / 30));
+        } else if (course?.duration_weeks) {
+            months = Math.max(1, Math.ceil(course.duration_weeks / 4.33));
+        }
+        if (!months || !effectivePrice) return null;
+        const monthly = Math.ceil((effectivePrice / months) * 100) / 100;
+        return { months, monthly };
     }
 
     async function handleCheckDiscount() {
@@ -257,6 +273,7 @@ export default function CourseDetailContent({ courseId }) {
         } catch (err) {
             const code = err?.body?.error_code;
             setDiscountError(
+                code === "SYSTEM_DISCOUNT_ACTIVE"      ? t("enroll_system_discount_active") :
                 code === "COUPON_EXPIRED"              ? t("enroll_coupon_expired") :
                 code === "COUPON_USAGE_LIMIT_REACHED"  ? t("enroll_coupon_used_up") :
                 code === "COUPON_NOT_APPLICABLE"       ? t("enroll_coupon_not_applicable") :
@@ -268,24 +285,29 @@ export default function CourseDetailContent({ courseId }) {
     async function handleEnroll() {
         if (!selectedBatch) return;
         setEnrolling(true); setEnrollError("");
+        const hasSystemDiscount = !!(course?.discounted_price);
         try {
             const res = await initiateCheckout({
                 batch_id: selectedBatch,
-                discount_code: discountCode.trim() || undefined,
+                discount_code: (!hasSystemDiscount && discountCode.trim()) ? discountCode.trim() : undefined,
+                payment_type: paymentType,
             });
             setShowModal(false);
             if (res.is_free) {
                 router.push(`/payment/success?enrollment_id=${res.enrollment_id}&free=1`);
             } else {
+                sessionStorage.setItem("paymob_enrollment_id", res.enrollment_id);
+                sessionStorage.setItem("paymob_course_id", courseId);
                 window.location.href = res.payment_url;
             }
         } catch (err) {
             const code = err?.body?.error_code;
             setEnrollError(
-                code === "ALREADY_ENROLLED"  ? t("enroll_already_enrolled") :
-                code === "COUPON_INVALID"    ? t("enroll_coupon_invalid") :
-                code === "COUPON_EXPIRED"    ? t("enroll_coupon_expired") :
-                code === "PAYMENT_GATEWAY_ERROR" ? t("enroll_gateway_error") :
+                code === "ALREADY_ENROLLED"      ? t("enroll_already_enrolled") :
+                code === "COUPON_INVALID"        ? t("enroll_coupon_invalid") :
+                code === "COUPON_EXPIRED"        ? t("enroll_coupon_expired") :
+                code === "SYSTEM_DISCOUNT_ACTIVE" ? t("enroll_system_discount_active") :
+                code === "PAYMENT_GATEWAY_ERROR"  ? t("enroll_gateway_error") :
                 t("enroll_error")
             );
         } finally { setEnrolling(false); }
@@ -441,7 +463,7 @@ export default function CourseDetailContent({ courseId }) {
                             <HeroPriceCard course={course} isFree={isFree} t={t}
                                 wishlisted={wishlisted} wishlistBusy={wishlistBusy}
                                 isLoggedIn={isLoggedIn} onWishlist={handleWishlistToggle}
-                                onEnroll={openEnrollModal} />
+                                onEnroll={openEnrollModal} isEnrolled={!!course?.is_enrolled} />
                         </div>
                     </div>
                 </div>
@@ -475,7 +497,7 @@ export default function CourseDetailContent({ courseId }) {
                     <SidebarPriceCard course={course} isFree={isFree} t={t} isAdmin={isAdmin}
                         wishlisted={wishlisted} wishlistBusy={wishlistBusy}
                         isLoggedIn={isLoggedIn} onWishlist={handleWishlistToggle}
-                        onEnroll={openEnrollModal} />
+                        onEnroll={openEnrollModal} isEnrolled={!!course?.is_enrolled} />
 
                     {/* Back link */}
                     <Link
@@ -528,59 +550,131 @@ export default function CourseDetailContent({ courseId }) {
                         })()}
 
                         {/* Price display */}
-                        <div className="flex items-baseline gap-2 mb-4">
-                            {discountInfo ? (
-                                <>
-                                    <span className="text-xl font-bold text-teal-500">
-                                        {Number(discountInfo.final_price).toLocaleString()} {t("enroll_egp")}
-                                    </span>
-                                    <span className="text-sm text-slate-400 line-through">
-                                        {Number(discountInfo.original_price).toLocaleString()}
-                                    </span>
-                                    <span className="text-xs text-green-600 dark:text-green-400 font-semibold">
-                                        -{Number(discountInfo.discount_amount).toLocaleString()} {t("enroll_egp")}
-                                    </span>
-                                </>
-                            ) : (
-                                <span className="text-xl font-bold text-slate-800 dark:text-white">
-                                    {isFree ? t("cd_free") : `${Number(course.price).toLocaleString()} ${t("enroll_egp")}`}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Discount code */}
-                        <div className="mb-4">
-                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-                                {t("enroll_discount_code")} <span className="normal-case font-normal">({t("test_optional")})</span>
-                            </label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <Tag size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        value={discountCode}
-                                        onChange={e => { setDiscountCode(e.target.value); setDiscountInfo(null); setDiscountError(""); }}
-                                        placeholder={t("enroll_discount_placeholder")}
-                                        className="w-full ps-9 pe-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                                    />
+                        {(() => {
+                            const hasSystemDiscount = !!(course.discounted_price);
+                            const effectivePrice = hasSystemDiscount
+                                ? Number(course.discounted_price)
+                                : (discountInfo ? Number(discountInfo.final_price) : Number(course.price));
+                            const isEffectivelyFree = !effectivePrice;
+                            return (
+                                <div className="mb-4">
+                                    {hasSystemDiscount ? (
+                                        <div className="flex items-baseline gap-2 flex-wrap">
+                                            <span className="text-xl font-bold text-teal-500">
+                                                {Number(course.discounted_price).toLocaleString()} {t("enroll_egp")}
+                                            </span>
+                                            <span className="text-sm text-slate-400 line-through">
+                                                {Number(course.price).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ) : discountInfo ? (
+                                        <div className="flex items-baseline gap-2 flex-wrap">
+                                            <span className="text-xl font-bold text-teal-500">
+                                                {Number(discountInfo.final_price).toLocaleString()} {t("enroll_egp")}
+                                            </span>
+                                            <span className="text-sm text-slate-400 line-through">
+                                                {Number(discountInfo.original_price).toLocaleString()}
+                                            </span>
+                                            <span className="text-xs text-green-600 dark:text-green-400 font-semibold">
+                                                -{Number(discountInfo.discount_amount).toLocaleString()} {t("enroll_egp")}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xl font-bold text-slate-800 dark:text-white">
+                                            {isEffectivelyFree ? t("cd_free") : `${Number(course.price).toLocaleString()} ${t("enroll_egp")}`}
+                                        </span>
+                                    )}
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleCheckDiscount}
-                                    disabled={!discountCode.trim() || discountChecking}
-                                    className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-teal-400 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-500/10 disabled:opacity-40 transition"
-                                >
-                                    {discountChecking ? <Loader2 size={15} className="animate-spin" /> : t("enroll_apply")}
-                                </button>
-                            </div>
-                            {discountInfo && (
-                                <p className="mt-1.5 text-xs text-green-600 dark:text-green-400 font-medium">
-                                    {t("enroll_coupon_applied")}
+                            );
+                        })()}
+
+                        {/* Payment type selector — Full vs Monthly */}
+                        {(() => {
+                            const hasSystemDiscount = !!(course.discounted_price);
+                            const effectivePrice = hasSystemDiscount
+                                ? Number(course.discounted_price)
+                                : (discountInfo ? Number(discountInfo.final_price) : Number(course.price));
+                            const breakdown = computeMonthlyBreakdown(effectivePrice);
+                            if (!effectivePrice || !breakdown) return null;
+                            return (
+                                <div className="mb-4">
+                                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+                                        {t("enroll_payment_type")}
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { value: "FULL",    label: t("enroll_pay_full"),    sub: `${effectivePrice.toLocaleString()} ${t("enroll_egp")}` },
+                                            { value: "MONTHLY", label: t("enroll_pay_monthly"), sub: `${breakdown.monthly.toLocaleString()} ${t("enroll_egp")} × ${breakdown.months}` },
+                                        ].map(({ value, label, sub }) => (
+                                            <button key={value} type="button"
+                                                onClick={() => setPaymentType(value)}
+                                                className={`flex flex-col items-start px-3 py-2.5 rounded-xl border text-start transition ${
+                                                    paymentType === value
+                                                        ? "border-teal-400 bg-teal-50 dark:bg-teal-900/20"
+                                                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                                                }`}>
+                                                <span className={`text-xs font-semibold ${paymentType === value ? "text-teal-700 dark:text-teal-300" : "text-slate-700 dark:text-slate-200"}`}>
+                                                    {label}
+                                                </span>
+                                                <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{sub}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {paymentType === "MONTHLY" && (
+                                        <p className="mt-2 text-xs text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 rounded-xl px-3 py-2">
+                                            {t("enroll_monthly_note")
+                                                .replace("{monthly}", breakdown.monthly.toLocaleString())
+                                                .replace("{months}", breakdown.months)
+                                                .replace("{total}", effectivePrice.toLocaleString())}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Discount code — hidden when system discount is active */}
+                        {course.discounted_price ? (
+                            <div className="mb-4 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40">
+                                <Tag size={14} className="text-green-500 shrink-0" />
+                                <p className="text-xs font-semibold text-green-700 dark:text-green-300">
+                                    {t("enroll_system_discount")}
+                                    {course.discount_label && <span className="ms-1 font-bold">({course.discount_label})</span>}
                                 </p>
-                            )}
-                            {discountError && (
-                                <p className="mt-1.5 text-xs text-red-500">{discountError}</p>
-                            )}
-                        </div>
+                            </div>
+                        ) : (
+                            <div className="mb-4">
+                                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                                    {t("enroll_discount_code")} <span className="normal-case font-normal">({t("test_optional")})</span>
+                                </label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Tag size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            value={discountCode}
+                                            onChange={e => { setDiscountCode(e.target.value); setDiscountInfo(null); setDiscountError(""); }}
+                                            placeholder={t("enroll_discount_placeholder")}
+                                            className="w-full ps-9 pe-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleCheckDiscount}
+                                        disabled={!discountCode.trim() || discountChecking}
+                                        className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-teal-400 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-500/10 disabled:opacity-40 transition"
+                                    >
+                                        {discountChecking ? <Loader2 size={15} className="animate-spin" /> : t("enroll_apply")}
+                                    </button>
+                                </div>
+                                {discountInfo && (
+                                    <p className="mt-1.5 text-xs text-green-600 dark:text-green-400 font-medium">
+                                        {t("enroll_coupon_applied")}
+                                    </p>
+                                )}
+                                {discountError && (
+                                    <p className="mt-1.5 text-xs text-red-500">{discountError}</p>
+                                )}
+                            </div>
+                        )}
 
                         {enrollError && (
                             <p className="mb-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">{enrollError}</p>
@@ -592,7 +686,7 @@ export default function CourseDetailContent({ courseId }) {
                             className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 transition text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2"
                         >
                             {enrolling && <Loader2 size={15} className="animate-spin" />}
-                            {isFree ? t("enroll_btn_free") : t("enroll_btn_pay")}
+                            {(isFree || Number(course.discounted_price) === 0) ? t("enroll_btn_free") : t("enroll_btn_pay")}
                         </button>
 
                         <p className="text-center text-xs text-slate-400 mt-3">{t("enroll_secure")}</p>
@@ -605,10 +699,15 @@ export default function CourseDetailContent({ courseId }) {
 
 /* ── Pricing sub-components ────────────────────────────────────── */
 
-function HeroPriceCard({ course, isFree, t, wishlisted, wishlistBusy, isLoggedIn, onWishlist, onEnroll }) {
+function HeroPriceCard({ course, isFree, t, wishlisted, wishlistBusy, isLoggedIn, onWishlist, onEnroll, isEnrolled }) {
     return (
         <div className="rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-lg shadow-slate-200/60 dark:shadow-none backdrop-blur-sm p-6">
-            {course.enrollment_open ? (
+            {isEnrolled ? (
+                <p className="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5"
+                    style={{ color: "#10b981" }}>
+                    <CheckCircleIcon size={11} /> {t("cd_enrolled")}
+                </p>
+            ) : course.enrollment_open ? (
                 <p className="text-xs text-red-500 dark:text-red-400 font-semibold uppercase tracking-wider mb-3">
                     {t("cd_limited_offer")}
                 </p>
@@ -626,16 +725,43 @@ function HeroPriceCard({ course, isFree, t, wishlisted, wishlistBusy, isLoggedIn
             ) : (
                 <div className="mb-4">
                     <p className="text-xs text-slate-400 uppercase tracking-wider mb-1 font-medium">{t("cd_one_time")}</p>
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-3xl font-bold text-teal-500 dark:text-teal-400">
-                            {Number(course.price).toLocaleString()}
-                        </span>
-                        <span className="text-slate-400 dark:text-slate-300 text-sm">{t("cd_price_per_batch")}</span>
-                    </div>
+                    {course.discounted_price ? (
+                        <>
+                            <span className="inline-block text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 mb-2">
+                                {course.discount_label}
+                            </span>
+                            <div className="flex items-baseline gap-2 flex-wrap mb-0.5">
+                                <span className="text-base line-through text-slate-400 dark:text-slate-500">
+                                    {Number(course.price).toLocaleString()} {t("cd_currency")}
+                                </span>
+                            </div>
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                                <span className="text-3xl font-bold text-teal-500 dark:text-teal-400">
+                                    {Number(course.discounted_price).toLocaleString()}
+                                </span>
+                                <span className="text-slate-400 dark:text-slate-300 text-sm">{t("cd_price_per_batch")}</span>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                            <span className="text-3xl font-bold text-teal-500 dark:text-teal-400">
+                                {Number(course.price).toLocaleString()}
+                            </span>
+                            <span className="text-slate-400 dark:text-slate-300 text-sm">{t("cd_price_per_batch")}</span>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {course.enrollment_open ? (
+            {isEnrolled ? (
+                <Link
+                    href="/dashboard/enrollments"
+                    className="w-full mt-4 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition text-white font-semibold py-3 rounded-xl text-sm"
+                >
+                    <CheckCircleIcon size={15} />
+                    {t("cd_view_enrollment")}
+                </Link>
+            ) : course.enrollment_open ? (
                 <button
                     onClick={onEnroll}
                     className="w-full mt-4 bg-teal-500 hover:bg-teal-600 transition text-white font-semibold py-3 rounded-xl text-sm"
@@ -668,7 +794,7 @@ function HeroPriceCard({ course, isFree, t, wishlisted, wishlistBusy, isLoggedIn
     );
 }
 
-function SidebarPriceCard({ course, isFree, t, isAdmin, wishlisted, wishlistBusy, isLoggedIn, onWishlist, onEnroll }) {
+function SidebarPriceCard({ course, isFree, t, isAdmin, wishlisted, wishlistBusy, isLoggedIn, onWishlist, onEnroll, isEnrolled }) {
     return (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 overflow-hidden shadow-lg shadow-black/5">
             {/* Visual header */}
@@ -681,7 +807,12 @@ function SidebarPriceCard({ course, isFree, t, isAdmin, wishlisted, wishlistBusy
             </div>
 
             <div className="p-5">
-                {course.enrollment_open ? (
+                {isEnrolled ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full mb-4 border"
+                        style={{ background: "rgba(16,185,129,0.1)", color: "#10b981", borderColor: "rgba(16,185,129,0.3)" }}>
+                        <CheckCircleIcon size={11} /> {t("cd_enrolled")}
+                    </span>
+                ) : course.enrollment_open ? (
                     <span className="inline-block text-xs font-semibold uppercase tracking-wider bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-800/40 px-3 py-1 rounded-full mb-4">
                         {t("cd_limited_offer")}
                     </span>
@@ -699,16 +830,43 @@ function SidebarPriceCard({ course, isFree, t, isAdmin, wishlisted, wishlistBusy
                 ) : (
                     <div className="mb-4">
                         <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t("cd_one_time")}</p>
-                        <div className="flex items-baseline gap-2 flex-wrap">
-                            <span className="text-3xl font-bold text-slate-800 dark:text-white">
-                                {Number(course.price).toLocaleString()}
-                            </span>
-                            <span className="text-slate-400 text-sm">{t("cd_price_per_batch")}</span>
-                        </div>
+                        {course.discounted_price ? (
+                            <>
+                                <span className="inline-block text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 mb-2">
+                                    {course.discount_label}
+                                </span>
+                                <div className="flex items-baseline gap-2 flex-wrap mb-0.5">
+                                    <span className="text-base line-through text-slate-400 dark:text-slate-500">
+                                        {Number(course.price).toLocaleString()} {t("cd_currency")}
+                                    </span>
+                                </div>
+                                <div className="flex items-baseline gap-2 flex-wrap">
+                                    <span className="text-3xl font-bold text-slate-800 dark:text-white">
+                                        {Number(course.discounted_price).toLocaleString()}
+                                    </span>
+                                    <span className="text-slate-400 text-sm">{t("cd_price_per_batch")}</span>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                                <span className="text-3xl font-bold text-slate-800 dark:text-white">
+                                    {Number(course.price).toLocaleString()}
+                                </span>
+                                <span className="text-slate-400 text-sm">{t("cd_price_per_batch")}</span>
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {course.enrollment_open ? (
+                {isEnrolled ? (
+                    <Link
+                        href="/dashboard/enrollments"
+                        className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 transition text-white font-semibold py-3 rounded-xl text-sm"
+                    >
+                        <CheckCircleIcon size={15} />
+                        {t("cd_view_enrollment")}
+                    </Link>
+                ) : course.enrollment_open ? (
                     <button
                         onClick={onEnroll}
                         className="w-full bg-teal-500 hover:bg-teal-600 transition text-white font-semibold py-3 rounded-xl text-sm"

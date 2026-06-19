@@ -8,7 +8,7 @@ import {
   LayoutGrid, LayoutList,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
-import { fetchMyEnrollments } from "@/utils/academyApi";
+import { fetchMyEnrollments, payInstallment } from "@/utils/academyApi";
 
 const STATUS_STYLE = {
   ACTIVE:    { bg: "rgba(20,184,166,0.15)",  text: "#14b8a6", border: "rgba(20,184,166,0.3)"  },
@@ -57,10 +57,29 @@ function EnrollmentRowSkeleton() {
 
 /* ── Grid card ─────────────────────────────────────────────────── */
 
-function EnrollmentCard({ enrollment, index }) {
+function EnrollmentCard({ enrollment, index, onInstallmentPaid }) {
   const { t } = useLocale();
+  const [payingInstallment, setPayingInstallment] = useState(false);
   const status  = STATUS_STYLE[enrollment.status]   ?? STATUS_STYLE.PENDING;
   const payment = PAYMENT_STYLE[enrollment.payment_status] ?? PAYMENT_STYLE.PENDING;
+
+  const isMonthlyPartial = enrollment.payment_type === "MONTHLY" && enrollment.payment_status === "PARTIAL";
+  const paidInstallments = isMonthlyPartial && enrollment.installment_amount > 0
+    ? Math.floor(Number(enrollment.paid_amount) / Number(enrollment.installment_amount))
+    : null;
+
+  async function handlePayInstallment() {
+    setPayingInstallment(true);
+    try {
+      const res = await payInstallment(enrollment.id);
+      if (res.payment_url) {
+        sessionStorage.setItem("paymob_enrollment_id", enrollment.id);
+        window.location.href = res.payment_url;
+      }
+    } catch {
+      // silent — let user retry
+    } finally { setPayingInstallment(false); }
+  }
 
   const progress  = enrollment.progress?.completion_percentage ?? 0;
   const attended  = enrollment.progress?.sessions_attended ?? 0;
@@ -138,21 +157,41 @@ function EnrollmentCard({ enrollment, index }) {
 
       <div className="flex-1" />
 
+      {/* Monthly installment progress */}
+      {isMonthlyPartial && paidInstallments !== null && (
+        <div className="mb-3 flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg"
+          style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
+          <CreditCard size={11} />
+          {t("dash_installments_progress")
+            .replace("{paid}", paidInstallments)
+            .replace("{total}", enrollment.installment_count)}
+        </div>
+      )}
+
       {/* CTA */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-xs flex items-center gap-1" style={{ color: "var(--dt-muted)" }}>
           <Calendar size={11} />
           {enrollment.batch?.start_date
             ? new Date(enrollment.batch.start_date).toLocaleDateString(undefined, { month: "short", year: "numeric" })
             : "—"}
         </span>
-        <Link
-          href={`/dashboard/enrollments/${enrollment.id}`}
-          className="dash-pill-btn flex items-center gap-1.5 text-xs font-medium px-3 py-1.5"
-          style={{ color: "var(--dt-secondary)" }}
-        >
-          {t("dash_view_enrollment")} <ChevronRight size={12} />
-        </Link>
+        <div className="flex items-center gap-1.5">
+          {isMonthlyPartial && (
+            <button onClick={handlePayInstallment} disabled={payingInstallment}
+              className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white transition">
+              {payingInstallment ? <Clock size={11} className="animate-spin" /> : <CreditCard size={11} />}
+              {t("dash_pay_installment")}
+            </button>
+          )}
+          <Link
+            href={`/dashboard/enrollments/${enrollment.id}`}
+            className="dash-pill-btn flex items-center gap-1.5 text-xs font-medium px-3 py-1.5"
+            style={{ color: "var(--dt-secondary)" }}
+          >
+            {t("dash_view_enrollment")} <ChevronRight size={12} />
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -162,8 +201,23 @@ function EnrollmentCard({ enrollment, index }) {
 
 function EnrollmentRow({ enrollment, index }) {
   const { t } = useLocale();
+  const [payingInstallment, setPayingInstallment] = useState(false);
   const status  = STATUS_STYLE[enrollment.status]          ?? STATUS_STYLE.PENDING;
   const payment = PAYMENT_STYLE[enrollment.payment_status] ?? PAYMENT_STYLE.PENDING;
+
+  const isMonthlyPartial = enrollment.payment_type === "MONTHLY" && enrollment.payment_status === "PARTIAL";
+
+  async function handlePayInstallment() {
+    setPayingInstallment(true);
+    try {
+      const res = await payInstallment(enrollment.id);
+      if (res.payment_url) {
+        sessionStorage.setItem("paymob_enrollment_id", enrollment.id);
+        window.location.href = res.payment_url;
+      }
+    } catch {
+    } finally { setPayingInstallment(false); }
+  }
 
   const progress  = enrollment.progress?.completion_percentage ?? 0;
   const attended  = enrollment.progress?.sessions_attended ?? 0;
@@ -244,13 +298,22 @@ function EnrollmentRow({ enrollment, index }) {
 
       {/* Action */}
       <td className="px-4 py-3">
-        <Link
-          href={`/dashboard/enrollments/${enrollment.id}`}
-          className="dash-pill-btn inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 whitespace-nowrap"
-          style={{ color: "var(--dt-secondary)" }}
-        >
-          {t("dash_view_enrollment")} <ChevronRight size={11} />
-        </Link>
+        <div className="flex items-center gap-2">
+          {isMonthlyPartial && (
+            <button onClick={handlePayInstallment} disabled={payingInstallment}
+              className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white transition whitespace-nowrap">
+              {payingInstallment ? <Clock size={11} className="animate-spin" /> : <CreditCard size={11} />}
+              {t("dash_pay_installment")}
+            </button>
+          )}
+          <Link
+            href={`/dashboard/enrollments/${enrollment.id}`}
+            className="dash-pill-btn inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 whitespace-nowrap"
+            style={{ color: "var(--dt-secondary)" }}
+          >
+            {t("dash_view_enrollment")} <ChevronRight size={11} />
+          </Link>
+        </div>
       </td>
     </tr>
   );

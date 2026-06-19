@@ -361,8 +361,8 @@ export async function adminDeleteTestimonial(id) {
 
 // ── Enrollment checkout ───────────────────────────────────────────────────────
 
-export async function initiateCheckout({ batch_id, discount_code }) {
-    const body = { batch_id };
+export async function initiateCheckout({ batch_id, discount_code, payment_type }) {
+    const body = { batch_id, payment_type: payment_type || "FULL" };
     if (discount_code) body.discount_code = discount_code;
     const res = await apiFetch("/api/v1/enrollments/checkout", {
         method: "POST",
@@ -381,6 +381,16 @@ export async function getPaymentStatus(enrollmentId) {
     return res.json();
 }
 
+export async function processPaymobCallback(enrollmentId, params) {
+    const body = { ...params, _enrollment_id: enrollmentId };
+    const res = await apiFetch("/api/v1/enrollments/payment-callback", {
+        method: "POST",
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw { status: res.status };
+    return res.json();
+}
+
 export async function validateDiscount(code, batchId) {
     const params = new URLSearchParams({ code, batch_id: batchId });
     const res = await apiFetch(`/api/v1/enrollments/validate-discount?${params}`);
@@ -391,10 +401,31 @@ export async function validateDiscount(code, batchId) {
     return res.json();
 }
 
+// ── Admin monthly installments ────────────────────────────────────────────────
+
+export async function adminFetchMonthlyInstallments() {
+    const res = await apiFetch("/api/v1/enrollments/monthly-installments");
+    if (!res.ok) return [];
+    return res.json();
+}
+
+export async function adminUpdateEnrollmentStatus(enrollmentId, status, notes) {
+    const res = await apiFetch(`/api/v1/enrollments/${enrollmentId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, notes: notes || undefined }),
+    });
+    if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw { status: res.status, body: b };
+    }
+    return res.json();
+}
+
 // ── Admin discount CRUD ───────────────────────────────────────────────────────
 
-export async function adminFetchDiscounts({ offset = 0, limit = 50 } = {}) {
+export async function adminFetchDiscounts({ offset = 0, limit = 100, includeArchived = false } = {}) {
     const params = new URLSearchParams({ offset, limit });
+    if (includeArchived) params.set("include_archived", "true");
     const res = await apiFetch(`/api/v1/discounts?${params}`);
     if (!res.ok) return [];
     return res.json();
@@ -427,4 +458,24 @@ export async function adminUpdateDiscount(id, data) {
 export async function adminDeleteDiscount(id) {
     const res = await apiFetch(`/api/v1/discounts/${id}`, { method: "DELETE" });
     if (!res.ok) throw { status: res.status };
+}
+
+export async function payInstallment(enrollmentId) {
+    const res = await apiFetch(`/api/v1/enrollments/${enrollmentId}/pay-installment`, {
+        method: "POST",
+    });
+    if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw { status: res.status, body: b };
+    }
+    return res.json();
+}
+
+export async function adminRestoreDiscount(id) {
+    const res = await apiFetch(`/api/v1/discounts/${id}/restore`, { method: "POST" });
+    if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw { status: res.status, body: b };
+    }
+    return res.json();
 }

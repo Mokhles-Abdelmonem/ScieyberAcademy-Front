@@ -19,6 +19,7 @@ import {
   MessageSquareQuote,
   Tag,
   CalendarDays,
+  CreditCard,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { logout } from "@/utils/auth";
@@ -42,11 +43,12 @@ const teacherNav = [
 ];
 
 const adminNav = [
-  { href: "/dashboard/courses",      labelKey: "dash_my_courses",    icon: BookOpen          },
-  { href: "/dashboard/batches",      labelKey: "dash_batches",       icon: CalendarDays      },
-  { href: "/dashboard/users",        labelKey: "dash_users",         icon: Users             },
-  { href: "/dashboard/discounts",    labelKey: "dash_discounts",     icon: Tag               },
-  { href: "/dashboard/testimonials", labelKey: "dash_testimonials",  icon: MessageSquareQuote },
+  { href: "/dashboard/courses",           labelKey: "dash_my_courses",        icon: BookOpen          },
+  { href: "/dashboard/batches",           labelKey: "dash_batches",           icon: CalendarDays      },
+  { href: "/dashboard/users",             labelKey: "dash_users",             icon: Users             },
+  { href: "/dashboard/discounts",         labelKey: "dash_discounts",         icon: Tag               },
+  { href: "/dashboard/monthly-payments",  labelKey: "dash_monthly_payments",  icon: CreditCard        },
+  { href: "/dashboard/testimonials",      labelKey: "dash_testimonials",      icon: MessageSquareQuote },
 ];
 
 export default function Sidebar({ onClose, role = "student", user }) {
