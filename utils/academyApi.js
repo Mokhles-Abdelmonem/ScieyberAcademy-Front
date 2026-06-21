@@ -359,6 +359,14 @@ export async function adminDeleteTestimonial(id) {
     if (!res.ok) throw { status: res.status };
 }
 
+// ── Dashboard summary ─────────────────────────────────────────────────────────
+
+export async function fetchDashboardSummary() {
+    const res = await apiFetch("/api/v1/dashboard/summary");
+    if (!res.ok) return null;
+    return res.json();
+}
+
 // ── Enrollment checkout ───────────────────────────────────────────────────────
 
 export async function initiateCheckout({ batch_id, discount_code, payment_type }) {

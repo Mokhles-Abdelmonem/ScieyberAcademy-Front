@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
     CreditCard, Loader2, AlertTriangle, CheckCircle2, Clock,
-    ChevronDown, RefreshCw, Filter,
+    ChevronDown, RefreshCw,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { adminFetchMonthlyInstallments, adminUpdateEnrollmentStatus } from "@/utils/academyApi";
@@ -29,9 +30,10 @@ function OverdueBadge({ days }) {
 }
 
 function StatusDropdown({ enrollment, onUpdated }) {
-    const { t } = useLocale();
-    const [open, setOpen]       = useState(false);
-    const [saving, setSaving]   = useState(false);
+    const [open, setOpen]     = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [pos, setPos]       = useState({ top: 0, left: 0 });
+    const btnRef              = useRef(null);
 
     async function change(newStatus) {
         if (newStatus === enrollment.status) { setOpen(false); return; }
@@ -43,6 +45,14 @@ function StatusDropdown({ enrollment, onUpdated }) {
         finally { setSaving(false); }
     }
 
+    function toggle() {
+        if (!open && btnRef.current) {
+            const r = btnRef.current.getBoundingClientRect();
+            setPos({ top: r.bottom + 4, left: r.right - 120 });
+        }
+        setOpen(o => !o);
+    }
+
     const colors = {
         ACTIVE:    "text-teal-600 dark:text-teal-400",
         DROPPED:   "text-red-500 dark:text-red-400",
@@ -52,20 +62,25 @@ function StatusDropdown({ enrollment, onUpdated }) {
 
     return (
         <div className="relative">
-            <button onClick={() => setOpen(o => !o)} disabled={saving}
+            <button ref={btnRef} onClick={toggle} disabled={saving}
                 className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-400 transition disabled:opacity-50 ${colors[enrollment.status] ?? ""}`}>
                 {saving ? <Loader2 size={11} className="animate-spin" /> : enrollment.status}
                 <ChevronDown size={11} />
             </button>
-            {open && (
-                <div className="absolute end-0 top-full mt-1 z-20 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[110px]">
-                    {STATUS_OPTIONS.map(s => (
-                        <button key={s} onClick={() => change(s)}
-                            className={`w-full text-start px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition ${colors[s] ?? ""}`}>
-                            {s}
-                        </button>
-                    ))}
-                </div>
+            {open && createPortal(
+                <>
+                    <div className="fixed inset-0 z-[998]" onClick={() => setOpen(false)} />
+                    <div style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 999 }}
+                        className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[120px]">
+                        {STATUS_OPTIONS.map(s => (
+                            <button key={s} onClick={() => change(s)}
+                                className={`w-full text-start px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition ${colors[s] ?? ""}`}>
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                </>,
+                document.body
             )}
         </div>
     );
@@ -127,6 +142,22 @@ export default function MonthlyPaymentsPage() {
                     </button>
                 </div>
             </div>
+
+            {/* Summary cards — shown as soon as data is loaded */}
+            {!loading && rows.length > 0 && (
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                    {[
+                        { label: t("mp_stat_total"),    value: rows.length,                  color: "text-teal-600 dark:text-teal-400" },
+                        { label: t("mp_stat_overdue"),  value: overdueCount,                 color: "text-red-500 dark:text-red-400"   },
+                        { label: t("mp_stat_on_track"), value: rows.length - overdueCount,   color: "text-green-600 dark:text-green-400" },
+                    ].map(({ label, value, color }) => (
+                        <div key={label} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-900">
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">{label}</p>
+                            <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {loading ? (
                 <div className="flex items-center justify-center py-24">
@@ -228,21 +259,6 @@ export default function MonthlyPaymentsPage() {
                 </div>
             )}
 
-            {/* Summary cards */}
-            {!loading && rows.length > 0 && (
-                <div className="grid grid-cols-3 gap-4 mt-6">
-                    {[
-                        { label: t("mp_stat_total"),   value: rows.length,      color: "text-teal-600 dark:text-teal-400" },
-                        { label: t("mp_stat_overdue"),  value: overdueCount,     color: "text-red-500 dark:text-red-400"   },
-                        { label: t("mp_stat_on_track"), value: rows.length - overdueCount, color: "text-green-600 dark:text-green-400" },
-                    ].map(({ label, value, color }) => (
-                        <div key={label} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-900">
-                            <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">{label}</p>
-                            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }

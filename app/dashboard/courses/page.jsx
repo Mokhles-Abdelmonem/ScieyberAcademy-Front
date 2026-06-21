@@ -269,6 +269,8 @@ export default function CoursesPage() {
   const { t }    = useLocale();
   const { user } = useUser();
 
+  const isInstructor = user?.user_type === "STAFF" || user?.user_type === "INSTRUCTOR";
+
   const [courses, setCourses]         = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState("");
@@ -313,10 +315,10 @@ export default function CoursesPage() {
       <div className="flex items-start justify-between gap-4 dash-anim-up" style={{ animationDelay: "0s" }}>
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--dt-primary)" }}>
-            {t("dash_course_catalog")}
+            {mineOnly && isInstructor ? t("dash_my_assigned_courses") : t("dash_course_catalog")}
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--dt-muted)" }}>
-            {t("dash_course_catalog_desc")}
+            {mineOnly && isInstructor ? t("dash_my_assigned_courses_desc") : t("dash_course_catalog_desc")}
           </p>
         </div>
         {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
@@ -357,7 +359,7 @@ export default function CoursesPage() {
               : { background: "var(--dash-glass-bg)", color: "var(--dt-muted)", border: "1px solid var(--dash-border)" }}
           >
             <GraduationCap size={12} />
-            {t("dash_mine_only")}
+            {isInstructor ? t("dash_my_assigned_courses_short") : t("dash_mine_only")}
           </button>
         )}
 
@@ -413,7 +415,7 @@ export default function CoursesPage() {
           {filtered.length} {t("dash_courses_found")}
           {mineOnly && (
             <span className="ms-2 font-semibold" style={{ color: "#a78bfa" }}>
-              · {t("dash_mine_only")}
+              · {isInstructor ? t("dash_my_assigned_courses_short") : t("dash_mine_only")}
             </span>
           )}
         </p>
@@ -426,7 +428,7 @@ export default function CoursesPage() {
             ? Array.from({ length: 6 }).map((_, i) => <CourseSkeleton key={i} />)
             : filtered.length > 0
               ? filtered.map((c, i) => <CourseCard key={c.id} course={c} index={i} canManage={["ADMIN","SUPER_ADMIN"].includes(user?.role) || ["INSTRUCTOR","STAFF"].includes(user?.user_type)} />)
-              : <EmptyState t={t} mineOnly={mineOnly} onShowAll={() => setMineOnly(false)} colSpan={3} />
+              : <EmptyState t={t} mineOnly={mineOnly} isInstructor={isInstructor} onShowAll={() => setMineOnly(false)} colSpan={3} />
           }
         </div>
       )}
@@ -457,7 +459,7 @@ export default function CoursesPage() {
                     : (
                       <tr>
                         <td colSpan={TABLE_COLS.length} className="px-4 py-10 text-center">
-                          <EmptyStateInline t={t} mineOnly={mineOnly} onShowAll={() => setMineOnly(false)} />
+                          <EmptyStateInline t={t} mineOnly={mineOnly} isInstructor={isInstructor} onShowAll={() => setMineOnly(false)} />
                         </td>
                       </tr>
                     )
@@ -473,7 +475,7 @@ export default function CoursesPage() {
 
 /* ── Empty state helpers ───────────────────────────────────────── */
 
-function EmptyState({ t, mineOnly, onShowAll, colSpan }) {
+function EmptyState({ t, mineOnly, isInstructor, onShowAll, colSpan }) {
   return (
     <div className="col-span-full dash-card p-10 flex flex-col items-center gap-3 text-center">
       <BookOpen size={32} style={{ color: "var(--dt-muted)" }} strokeWidth={1.2} />
@@ -483,7 +485,7 @@ function EmptyState({ t, mineOnly, onShowAll, colSpan }) {
       <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
         {mineOnly ? t("dash_no_my_courses_desc") : t("dash_no_courses_desc")}
       </p>
-      {mineOnly && (
+      {mineOnly && !isInstructor && (
         <button
           onClick={onShowAll}
           className="mt-2 dash-pill-btn text-xs font-medium px-4 py-2"
@@ -496,7 +498,7 @@ function EmptyState({ t, mineOnly, onShowAll, colSpan }) {
   );
 }
 
-function EmptyStateInline({ t, mineOnly, onShowAll }) {
+function EmptyStateInline({ t, mineOnly, isInstructor, onShowAll }) {
   return (
     <div className="flex flex-col items-center gap-3">
       <BookOpen size={28} style={{ color: "var(--dt-muted)" }} strokeWidth={1.2} />
@@ -506,7 +508,7 @@ function EmptyStateInline({ t, mineOnly, onShowAll }) {
       <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
         {mineOnly ? t("dash_no_my_courses_desc") : t("dash_no_courses_desc")}
       </p>
-      {mineOnly && (
+      {mineOnly && !isInstructor && (
         <button
           onClick={onShowAll}
           className="mt-1 dash-pill-btn text-xs font-medium px-4 py-2"
