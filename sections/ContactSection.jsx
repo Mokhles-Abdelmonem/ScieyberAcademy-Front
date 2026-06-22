@@ -1,24 +1,70 @@
 "use client";
 import SectionTitle from "@/components/SectionTitle";
 import { useLocale } from "@/context/LocaleContext";
-import { AlertCircleIcon, CheckCircleIcon, ClockIcon, MailIcon, MapPinIcon, SendIcon } from "lucide-react";
-import { useState } from "react";
+import {
+    AlertCircleIcon, CheckCircleIcon, ClockIcon, MailIcon, MapPinIcon,
+    PhoneIcon, MessageCircleIcon, SendIcon, FacebookIcon, LinkedinIcon,
+    InstagramIcon, YoutubeIcon,
+} from "lucide-react";
+import { useState, useEffect } from "react";
 import { parseApiError } from "@/utils/parseApiError";
+import { fetchContactInfo } from "@/utils/academyApi";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+// TikTok icon (not in lucide)
+function TikTokIcon({ size = 17, ...props }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...props}>
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.05a8.16 8.16 0 0 0 4.77 1.52V7.12a4.85 4.85 0 0 1-1-.43z" />
+        </svg>
+    );
+}
+
+function buildInfoItems(info, t) {
+    const items = [];
+
+    if (info?.email) {
+        items.push({ icon: MailIcon, label: t("contact_email_label"), value: info.email, href: `mailto:${info.email}` });
+    }
+    if (info?.phone) {
+        items.push({ icon: PhoneIcon, label: t("contact_phone_label"), value: info.phone, href: `tel:${info.phone}` });
+    }
+    if (info?.whatsapp) {
+        items.push({ icon: MessageCircleIcon, label: t("contact_whatsapp_label"), value: info.whatsapp, href: `https://wa.me/${info.whatsapp.replace(/\D/g, "")}` });
+    }
+    if (info?.address) {
+        items.push({ icon: MapPinIcon, label: t("contact_location_label"), value: info.address, href: null });
+    }
+    if (info?.response_time) {
+        items.push({ icon: ClockIcon, label: t("contact_time_label"), value: info.response_time, href: null });
+    }
+    return items;
+}
+
+function buildSocialItems(info) {
+    const socials = [];
+    if (info?.facebook_url)  socials.push({ icon: FacebookIcon,  href: info.facebook_url,  label: "Facebook"  });
+    if (info?.linkedin_url)  socials.push({ icon: LinkedinIcon,  href: info.linkedin_url,  label: "LinkedIn"  });
+    if (info?.instagram_url) socials.push({ icon: InstagramIcon, href: info.instagram_url, label: "Instagram" });
+    if (info?.tiktok_url)    socials.push({ icon: TikTokIcon,    href: info.tiktok_url,    label: "TikTok"    });
+    return socials;
+}
+
 export default function ContactSection() {
     const { t } = useLocale();
-    const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+    const [form, setForm]           = useState({ name: "", email: "", subject: "", message: "" });
     const [submitted, setSubmitted] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [loading, setLoading]     = useState(false);
+    const [error, setError]         = useState(null);
+    const [info, setInfo]           = useState(null);
 
-    const infoItems = [
-        { icon: MailIcon, labelKey: "contact_email_label", value: "contact@scieyber.com", href: "mailto:contact@scieyber.com" },
-        { icon: MapPinIcon, labelKey: "contact_location_label", valueKey: "contact_location_value", href: null },
-        { icon: ClockIcon, labelKey: "contact_time_label", valueKey: "contact_time_value", href: null },
-    ];
+    useEffect(() => {
+        fetchContactInfo().then(data => setInfo(data)).catch(() => {});
+    }, []);
+
+    const infoItems   = buildInfoItems(info, t);
+    const socialItems = buildSocialItems(info);
 
     const handleChange = (e) => {
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -81,25 +127,44 @@ export default function ContactSection() {
                         <p className="text-teal-100 text-sm leading-relaxed">{t("contact_info_desc")}</p>
                     </div>
 
-                    <ul className="relative z-10 flex flex-col gap-5">
-                        {infoItems.map(({ icon: Icon, labelKey, value, valueKey, href }) => (
-                            <li key={labelKey} className="flex items-start gap-4">
-                                <span className="mt-0.5 flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm">
+                    {infoItems.length > 0 && (
+                        <ul className="relative z-10 flex flex-col gap-5">
+                            {infoItems.map(({ icon: Icon, label, value, href }) => (
+                                <li key={label} className="flex items-start gap-4">
+                                    <span className="mt-0.5 flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm">
+                                        <Icon size={17} className="text-white" strokeWidth={1.6} />
+                                    </span>
+                                    <div>
+                                        <p className="text-teal-200 text-xs font-medium uppercase tracking-wider mb-0.5">{label}</p>
+                                        {href ? (
+                                            <a href={href} className="text-white text-sm hover:text-teal-200 transition-colors">
+                                                {value}
+                                            </a>
+                                        ) : (
+                                            <p className="text-white text-sm">{value}</p>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    {socialItems.length > 0 && (
+                        <div className="relative z-10 flex items-center gap-3">
+                            {socialItems.map(({ icon: Icon, href, label }) => (
+                                <a
+                                    key={label}
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={label}
+                                    className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm hover:bg-white/25 transition-colors"
+                                >
                                     <Icon size={17} className="text-white" strokeWidth={1.6} />
-                                </span>
-                                <div>
-                                    <p className="text-teal-200 text-xs font-medium uppercase tracking-wider mb-0.5">{t(labelKey)}</p>
-                                    {href ? (
-                                        <a href={href} className="text-white text-sm hover:text-teal-200 transition-colors">
-                                            {value}
-                                        </a>
-                                    ) : (
-                                        <p className="text-white text-sm">{t(valueKey)}</p>
-                                    )}
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+                                </a>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Right form panel ────────────────────────────── */}

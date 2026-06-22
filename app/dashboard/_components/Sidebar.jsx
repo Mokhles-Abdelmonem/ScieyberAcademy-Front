@@ -20,6 +20,7 @@ import {
   Tag,
   CalendarDays,
   CreditCard,
+  Phone,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { logout } from "@/utils/auth";
@@ -43,12 +44,13 @@ const teacherNav = [
 ];
 
 const adminNav = [
-  { href: "/dashboard/courses",           labelKey: "dash_my_courses",        icon: BookOpen          },
-  { href: "/dashboard/batches",           labelKey: "dash_batches",           icon: CalendarDays      },
-  { href: "/dashboard/users",             labelKey: "dash_users",             icon: Users             },
-  { href: "/dashboard/discounts",         labelKey: "dash_discounts",         icon: Tag               },
-  { href: "/dashboard/monthly-payments",  labelKey: "dash_monthly_payments",  icon: CreditCard        },
-  { href: "/dashboard/testimonials",      labelKey: "dash_testimonials",      icon: MessageSquareQuote },
+  { href: "/dashboard/courses",           labelKey: "dash_my_courses",        icon: BookOpen,           roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/dashboard/batches",           labelKey: "dash_batches",           icon: CalendarDays,       roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/dashboard/users",             labelKey: "dash_users",             icon: Users,              roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/dashboard/discounts",         labelKey: "dash_discounts",         icon: Tag,                roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/dashboard/monthly-payments",  labelKey: "dash_monthly_payments",  icon: CreditCard,         roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/dashboard/testimonials",      labelKey: "dash_testimonials",      icon: MessageSquareQuote, roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/dashboard/contact-info",      labelKey: "dash_contact_info",      icon: Phone,              roles: ["SUPER_ADMIN"]          },
 ];
 
 export default function Sidebar({ onClose, role = "student", user }) {
@@ -57,8 +59,9 @@ export default function Sidebar({ onClose, role = "student", user }) {
   const { t }    = useLocale();
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const filteredAdminNav = adminNav.filter(item => item.roles.includes(user?.role));
   const navItems = isAdmin
-    ? adminNav
+    ? filteredAdminNav
     : (role === "STAFF" || role === "teacher" || role === "INSTRUCTOR") ? teacherNav : studentNav;
 
   const handleLogout = async () => {

@@ -487,3 +487,24 @@ export async function adminRestoreDiscount(id) {
     }
     return res.json();
 }
+
+// ── Contact Info ───────────────────────────────────────────────────────────────
+
+export async function fetchContactInfo() {
+    const res = await apiFetch("/api/v1/contact-info");
+    if (!res.ok) return null;
+    return res.json();
+}
+
+export async function adminUpdateContactInfo(data) {
+    const res = await apiFetch("/api/v1/contact-info", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.message || "Failed to update contact info");
+    }
+    return res.json();
+}
