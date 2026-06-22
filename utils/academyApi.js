@@ -508,3 +508,11 @@ export async function adminUpdateContactInfo(data) {
     }
     return res.json();
 }
+
+// ── Instructor Profile ─────────────────────────────────────────────────────────
+
+export async function fetchInstructorProfile(instructorId) {
+    const res = await apiFetch(`/api/v1/courses/instructors/${instructorId}`);
+    if (!res.ok) return null;
+    return res.json();
+}

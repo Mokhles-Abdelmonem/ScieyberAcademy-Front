@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Menu, X, Bell, Search, ChevronDown,
+  Menu, X, Search, ChevronDown,
   User as UserIcon, BookOpen, ListChecks, Award, Heart,
   CreditCard, LogOut, HelpCircle, LayoutDashboard,
   Users, ShieldCheck,
@@ -37,12 +37,12 @@ const MENU_SUPPORT = [
 ];
 
 /* ── Notification mock data ───────────────────────────────────────── */
-
-const NOTIFICATIONS = [
-  { text: "New certificate available for Python Basics", time: "2h ago"     },
-  { text: "Your ML course progress: 78%",               time: "Yesterday"   },
-  { text: "Instructor posted a new lecture",            time: "3d ago"      },
-];
+// TODO: Notifications feature — to be implemented in a future release.
+// const NOTIFICATIONS = [
+//   { text: "New certificate available for Python Basics", time: "2h ago"     },
+//   { text: "Your ML course progress: 78%",               time: "Yesterday"   },
+//   { text: "Instructor posted a new lecture",            time: "3d ago"      },
+// ];
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
 
@@ -117,7 +117,6 @@ function SearchBar({ placeholder, isRTL }) {
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [notifOpen,    setNotifOpen]    = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const { theme }    = useThemeContext();
@@ -125,15 +124,13 @@ export default function DashboardLayout({ children }) {
   const { user }     = useUser();
   const router       = useRouter();
 
-  const notifRef    = useRef(null);
   const userMenuRef = useRef(null);
   const isLight     = theme === "light";
   const isAdmin     = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
-  /* Click-outside — close any open dropdown */
+  /* Click-outside — close user menu dropdown */
   useEffect(() => {
     const handler = (e) => {
-      if (notifRef.current    && !notifRef.current.contains(e.target))    setNotifOpen(false);
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -152,7 +149,6 @@ export default function DashboardLayout({ children }) {
     const onKey = (e) => {
       if (e.key === "Escape") {
         setSidebarOpen(false);
-        setNotifOpen(false);
         setUserMenuOpen(false);
       }
     };
@@ -185,8 +181,8 @@ export default function DashboardLayout({ children }) {
         <ThemeToggle />
       </div>
 
-      {/* Notifications */}
-      <div className="relative" ref={notifRef}>
+      {/* TODO: Notifications — to be implemented in a future release. */}
+      {/* <div className="relative" ref={notifRef}>
         <button
           className="dash-glass relative flex items-center justify-center w-9 h-9 rounded-full"
           style={{ color: "var(--dt-secondary)" }}
@@ -221,14 +217,14 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* User menu */}
       <div className="relative" ref={userMenuRef}>
         <button
           className="dash-glass flex items-center gap-2 rounded-full px-2.5 py-1.5 transition-all duration-150"
           style={{ color: "var(--dt-secondary)" }}
-          onClick={() => { setUserMenuOpen((v) => !v); setNotifOpen(false); }}
+          onClick={() => setUserMenuOpen((v) => !v)}
           aria-label="User menu"
         >
           {user?.profile_picture_url ? (

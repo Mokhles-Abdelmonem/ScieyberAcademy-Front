@@ -46,6 +46,22 @@ export const ar = {
         "ثلاثة مسارات متخصصة، مبنية من الأساس لتنقلك من المبتدئ إلى المحترف الجاهز لسوق العمل.",
     course_most_popular: "الأكثر طلباً",
     course_curriculum_label: "المنهج الدراسي",
+    course_view_btn: "عرض الدورة",
+    course_click_to_view: "انقر للاستعراض",
+    course_enrollment_open: "التسجيل مفتوح",
+    course_enrollment_closed: "قريباً",
+    courses_empty: "لا توجد دورات متاحة حالياً. تحقق مرة أخرى قريباً!",
+
+    // ── Instructor Profile ───────────────────────────────────────────────────
+    ip_instructor_badge:  "مدرب",
+    ip_courses_label:     "دورات",
+    ip_courses_by:        "دورات",
+    ip_no_courses:        "لا توجد دورات منشورة بعد.",
+    ip_back:              "العودة للدورات",
+    ip_not_found:         "المدرب غير موجود",
+    ip_not_found_desc:    "هذا الملف الشخصي غير موجود أو لم يعد متاحاً.",
+    ip_view_profile:      "عرض الملف الشخصي",
+    ip_free:              "مجاناً",
 
     // ── Testimonials ──────────────────────────────────────────────────
     section_testimonials_label: "آراء الطلاب",
@@ -157,12 +173,42 @@ export const ar = {
     login_panel_tagline: "مستقبلك في عالم التقنية يبدأ من هنا",
     login_panel_sub: "انضم إلى أكثر من 100 طالب يبنون مهاراتهم الحقيقية بإرشاد من الخبراء.",
 
+    // ── Forgot password ───────────────────────────────────────────────
+    fp_heading:           "نسيت كلمة المرور؟",
+    fp_subheading:        "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين.",
+    fp_email_label:       "البريد الإلكتروني",
+    fp_email_placeholder: "you@example.com",
+    fp_submit:            "إرسال رابط الإعادة",
+    fp_submitting:        "جاري الإرسال…",
+    fp_success_heading:   "تحقق من بريدك",
+    fp_success_msg:       "إذا كان البريد مسجلاً، فقد تم إرسال رابط إعادة تعيين كلمة المرور. ينتهي خلال 15 دقيقة.",
+    fp_back_to_login:     "العودة لتسجيل الدخول",
+
+    // ── Reset password ────────────────────────────────────────────────
+    rp_heading:                      "تعيين كلمة مرور جديدة",
+    rp_subheading:                   "اختر كلمة مرور قوية من 8 أحرف على الأقل.",
+    rp_new_password:                 "كلمة المرور الجديدة",
+    rp_new_password_placeholder:     "8 أحرف على الأقل",
+    rp_confirm_password:             "تأكيد كلمة المرور",
+    rp_confirm_password_placeholder: "أعد إدخال كلمة المرور",
+    rp_submit:                       "إعادة تعيين كلمة المرور",
+    rp_submitting:                   "جاري الإعادة…",
+    rp_success_heading:              "تم تحديث كلمة المرور!",
+    rp_success_msg:                  "تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.",
+    rp_redirecting:                  "سيتم توجيهك لتسجيل الدخول خلال 3 ثوانٍ…",
+    rp_password_mismatch:            "كلمتا المرور غير متطابقتين.",
+    rp_token_invalid_heading:        "رابط غير صالح",
+    rp_token_invalid:                "رابط إعادة التعيين مفقود أو غير صالح.",
+    rp_request_new:                  "طلب رابط إعادة جديد",
+
     // ── API Errors — login / auth ─────────────────────────────────────
     error_auth_invalid_credentials: "البريد الإلكتروني/اسم المستخدم أو كلمة المرور غير صحيحة.",
     error_auth_account_deactivated: "تم تعطيل حسابك. يرجى التواصل مع الدعم.",
     error_auth_token_invalid: "جلستك غير صالحة. يرجى تسجيل الدخول مرة أخرى.",
     error_auth_token_expired: "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
     error_auth_token_missing: "يجب تسجيل الدخول أولاً.",
+    error_auth_password_reset_token_invalid: "رابط إعادة التعيين غير صالح أو تم استخدامه مسبقاً.",
+    error_auth_password_reset_token_expired: "انتهت صلاحية رابط إعادة التعيين. يرجى طلب رابط جديد.",
 
     // ── Register ──────────────────────────────────────────────────────
     register_heading: "إنشاء حساب جديد",

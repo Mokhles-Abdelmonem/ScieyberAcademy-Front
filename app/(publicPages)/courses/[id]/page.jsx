@@ -1,24 +1,25 @@
-import { coursesData } from "@/data/coursesData";
-import { notFound } from "next/navigation";
-import StaticCourseDetailContent from "./StaticCourseDetailContent";
+import CourseDetailContent from "../../course/[id]/CourseDetailContent";
 
-export async function generateStaticParams() {
-    return coursesData.map((c) => ({ id: c.id }));
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+async function fetchCourseSSR(id) {
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/courses/${id}`, { cache: "no-store" });
+        if (!res.ok) return null;
+        return res.json();
+    } catch {
+        return null;
+    }
 }
 
 export async function generateMetadata({ params }) {
     const { id } = await params;
-    const course = coursesData.find((c) => c.id === id);
+    const course = await fetchCourseSSR(id);
     if (!course) return {};
-    return { title: `${course.title.en} — Scieyber Academy` };
+    return { title: `${course.title} — Scieyber Academy` };
 }
 
-export default async function StaticCourseDetailPage({ params }) {
+export default async function CourseDetailPage({ params }) {
     const { id } = await params;
-    const course = coursesData.find((c) => c.id === id);
-    if (!course) notFound();
-
-    const savePct = Math.round(((course.price - course.discountedPrice) / course.price) * 100);
-
-    return <StaticCourseDetailContent courseId={id} savePct={savePct} />;
+    return <CourseDetailContent courseId={id} />;
 }

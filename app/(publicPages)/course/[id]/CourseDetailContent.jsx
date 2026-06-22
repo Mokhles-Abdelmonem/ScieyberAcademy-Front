@@ -161,26 +161,31 @@ function InstructorsSection({ instructors, t }) {
             <h2 className="text-xl font-bold mb-5 text-slate-800 dark:text-white">{t("cd_instructors")}</h2>
             <div className="space-y-4">
                 {instructors.map((instructor) => (
-                    <div key={instructor.id} className="flex items-start gap-5 bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-                        <div className="shrink-0 size-14 rounded-full bg-gradient-to-br from-teal-400 to-teal-700 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
+                    <Link
+                        key={instructor.id}
+                        href={`/instructor/${instructor.id}`}
+                        className="group flex items-start gap-5 bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-md hover:shadow-teal-500/8 transition-all duration-200"
+                    >
+                        <div className="shrink-0 size-14 rounded-full bg-gradient-to-br from-teal-400 to-teal-700 flex items-center justify-center text-white font-bold text-lg overflow-hidden ring-2 ring-transparent group-hover:ring-teal-400/30 transition-all">
                             {instructor.profile_picture_url ? (
                                 <img src={instructor.profile_picture_url} alt={instructor.first_name} className="size-full object-cover" />
                             ) : (
                                 (instructor.first_name?.[0] ?? "?").toUpperCase()
                             )}
                         </div>
-                        <div>
-                            <p className="font-semibold text-slate-800 dark:text-white">
+                        <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-800 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                                 {instructor.first_name} {instructor.last_name}
                             </p>
                             <p className="text-teal-500 text-xs font-medium mt-0.5 mb-3">
                                 {instructor.title || `@${instructor.username}`}
                             </p>
                             {instructor.bio && (
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{instructor.bio}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{instructor.bio}</p>
                             )}
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">{t("ip_view_profile")} →</p>
                         </div>
-                    </div>
+                    </Link>
                 ))}
             </div>
         </section>

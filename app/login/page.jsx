@@ -148,9 +148,9 @@ export default function LoginPage() {
                                 <label htmlFor="password" className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-white/40">
                                     {t("login_password")}
                                 </label>
-                                <button type="button" className="text-xs text-teal-600/80 dark:text-teal-400/70 hover:text-teal-500 dark:hover:text-teal-300 transition">
+                                <Link href="/forgot-password" className="text-xs text-teal-600/80 dark:text-teal-400/70 hover:text-teal-500 dark:hover:text-teal-300 transition">
                                     {t("login_forgot")}
-                                </button>
+                                </Link>
                             </div>
                             <div className="relative">
                                 <LockIcon

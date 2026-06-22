@@ -46,6 +46,22 @@ export const en = {
         "Three focused tracks, built from the ground up to take you from beginner to job-ready professional.",
     course_most_popular: "Most Popular",
     course_curriculum_label: "Curriculum",
+    course_view_btn: "View Course",
+    course_click_to_view: "Click to explore",
+    course_enrollment_open: "Enrollment Open",
+    course_enrollment_closed: "Coming Soon",
+    courses_empty: "No courses available yet. Check back soon!",
+
+    // ── Instructor Profile ───────────────────────────────────────────────────
+    ip_instructor_badge:  "Instructor",
+    ip_courses_label:     "Courses",
+    ip_courses_by:        "Courses by",
+    ip_no_courses:        "No published courses yet.",
+    ip_back:              "Back to Courses",
+    ip_not_found:         "Instructor not found",
+    ip_not_found_desc:    "This instructor profile does not exist or is no longer available.",
+    ip_view_profile:      "View instructor profile",
+    ip_free:              "Free",
 
     // ── Testimonials ──────────────────────────────────────────────────
     section_testimonials_label: "TESTIMONIALS",
@@ -160,12 +176,42 @@ export const en = {
     login_panel_tagline: "Your Future in Tech Starts Here",
     login_panel_sub: "Join 100+ students building real skills with expert mentorship.",
 
+    // ── Forgot password ───────────────────────────────────────────────
+    fp_heading:          "Forgot your password?",
+    fp_subheading:       "Enter your email address and we'll send you a reset link.",
+    fp_email_label:      "Email Address",
+    fp_email_placeholder: "you@example.com",
+    fp_submit:           "Send Reset Link",
+    fp_submitting:       "Sending…",
+    fp_success_heading:  "Check your inbox",
+    fp_success_msg:      "If that email is registered, a password reset link has been sent. It expires in 15 minutes.",
+    fp_back_to_login:    "Back to login",
+
+    // ── Reset password ────────────────────────────────────────────────
+    rp_heading:                    "Set a new password",
+    rp_subheading:                 "Choose a strong password with at least 8 characters.",
+    rp_new_password:               "New Password",
+    rp_new_password_placeholder:   "At least 8 characters",
+    rp_confirm_password:           "Confirm Password",
+    rp_confirm_password_placeholder: "Repeat your new password",
+    rp_submit:                     "Reset Password",
+    rp_submitting:                 "Resetting…",
+    rp_success_heading:            "Password updated!",
+    rp_success_msg:                "Your password has been changed. You can now log in.",
+    rp_redirecting:                "Redirecting to login in 3 seconds…",
+    rp_password_mismatch:          "Passwords don't match.",
+    rp_token_invalid_heading:      "Invalid link",
+    rp_token_invalid:              "This password reset link is missing or invalid.",
+    rp_request_new:                "Request a new reset link",
+
     // ── API Errors — login / auth ─────────────────────────────────────
     error_auth_invalid_credentials: "Incorrect email/username or password.",
     error_auth_account_deactivated: "Your account has been deactivated. Please contact support.",
     error_auth_token_invalid: "Your session is invalid. Please sign in again.",
     error_auth_token_expired: "Your session has expired. Please sign in again.",
     error_auth_token_missing: "Authentication required.",
+    error_auth_password_reset_token_invalid: "This reset link is invalid or has already been used.",
+    error_auth_password_reset_token_expired: "This reset link has expired. Please request a new one.",
 
     // ── Register ──────────────────────────────────────────────────────
     register_heading: "Create your account",

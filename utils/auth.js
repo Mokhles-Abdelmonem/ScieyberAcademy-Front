@@ -211,3 +211,41 @@ export async function changePassword(currentPassword, newPassword) {
         throw { status: res.status, body };
     }
 }
+
+// ── Forgot / reset password ────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/auth/forgot-password
+ * Always resolves (server never reveals whether email exists).
+ * Returns true on any 2xx, false on network error.
+ */
+export async function requestPasswordReset(email) {
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/auth/forgot-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * POST /api/v1/auth/reset-password
+ * Resolves with { ok: true } on success.
+ * Throws { status, body } on API error (invalid/expired token, weak password).
+ */
+export async function resetPassword(token, newPassword) {
+    const res = await fetch(`${API_BASE}/api/v1/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, new_password: newPassword }),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw { status: res.status, body };
+    }
+    return { ok: true };
+}
