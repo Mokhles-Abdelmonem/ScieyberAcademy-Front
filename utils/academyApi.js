@@ -56,6 +56,14 @@ export async function updateCourse(courseId, data) {
     return res.json();
 }
 
+export async function deleteCourse(courseId) {
+    const res = await apiFetch(`/api/v1/courses/${courseId}`, { method: "DELETE" });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to delete course");
+    }
+}
+
 export async function fetchCourseCategories() {
     const res = await apiFetch("/api/v1/courses/categories");
     if (!res.ok) return [];

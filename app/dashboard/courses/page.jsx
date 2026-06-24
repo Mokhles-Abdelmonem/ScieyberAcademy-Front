@@ -6,11 +6,65 @@ import { useSearchParams } from "next/navigation";
 import {
   BookOpen, Filter, Search, Clock, Users, XCircle,
   ChevronRight, Wifi, Building2, Layers, GraduationCap, Plus,
-  LayoutGrid, LayoutList, CalendarDays, Loader2,
+  LayoutGrid, LayoutList, CalendarDays, Loader2, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { useUser } from "@/context/UserContext";
-import { fetchPublishedCourses, searchCourses } from "@/utils/academyApi";
+import { fetchPublishedCourses, searchCourses, deleteCourse } from "@/utils/academyApi";
+
+/* ── Delete confirmation modal ─────────────────────────────────── */
+
+function DeleteModal({ course, onConfirm, onCancel, busy, t }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl dash-anim-up"
+        style={{ background: "var(--dash-card-bg)", border: "1px solid var(--dash-border)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-4">
+          <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(239,68,68,0.12)" }}>
+            <AlertTriangle size={18} style={{ color: "#ef4444" }} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-bold mb-1" style={{ color: "var(--dt-primary)" }}>
+              {t("dash_delete_course_title")}
+            </h3>
+            <p className="text-xs leading-relaxed mb-1" style={{ color: "var(--dt-muted)" }}>
+              {t("dash_delete_course_desc")}
+            </p>
+            <p className="text-xs font-semibold px-2 py-1 rounded-lg inline-block mt-1"
+              style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444" }}>
+              {course.title}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 mt-6">
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
+            style={{ background: "var(--dash-glass-bg)", color: "var(--dt-muted)", border: "1px solid var(--dash-border)" }}
+          >
+            {t("dash_cancel")}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
+            style={{ background: busy ? "rgba(239,68,68,0.5)" : "#ef4444", color: "#fff" }}
+          >
+            {busy ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            {t("dash_delete_confirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const LEVEL_COLOR = {
   BEGINNER:     { bg: "rgba(52,211,153,0.15)",  text: "#34d399", border: "rgba(52,211,153,0.3)"  },
@@ -55,7 +109,7 @@ function CourseRowSkeleton() {
 
 /* ── Grid card ─────────────────────────────────────────────────── */
 
-function CourseCard({ course, index, canManage }) {
+function CourseCard({ course, index, canManage, isSuperAdmin, onDeleteClick }) {
   const { t } = useLocale();
   const level   = LEVEL_COLOR[course.level] ?? LEVEL_COLOR.BEGINNER;
   const ModeIcon = MODE_ICON[course.delivery_mode] ?? BookOpen;
@@ -139,6 +193,15 @@ function CourseCard({ course, index, canManage }) {
           >
             {t("dash_view_details")} <ChevronRight size={12} />
           </Link>
+          {isSuperAdmin && (
+            <button
+              onClick={() => onDeleteClick(course)}
+              className="dash-pill-btn flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 transition-colors hover:text-red-500"
+              style={{ color: "var(--dt-muted)" }}
+            >
+              <Trash2 size={11} />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -147,7 +210,7 @@ function CourseCard({ course, index, canManage }) {
 
 /* ── List row ──────────────────────────────────────────────────── */
 
-function CourseRow({ course, index, canManage }) {
+function CourseRow({ course, index, canManage, isSuperAdmin, onDeleteClick }) {
   const { t } = useLocale();
   const level    = LEVEL_COLOR[course.level] ?? LEVEL_COLOR.BEGINNER;
   const ModeIcon = MODE_ICON[course.delivery_mode] ?? BookOpen;
@@ -223,6 +286,15 @@ function CourseRow({ course, index, canManage }) {
           >
             {t("dash_view_details")} <ChevronRight size={11} />
           </Link>
+          {isSuperAdmin && (
+            <button
+              onClick={() => onDeleteClick(course)}
+              className="dash-pill-btn inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 whitespace-nowrap transition-colors hover:text-red-500"
+              style={{ color: "var(--dt-muted)" }}
+            >
+              <Trash2 size={11} />
+            </button>
+          )}
         </div>
       </td>
     </tr>
@@ -288,6 +360,7 @@ function CoursesContent() {
 
   const isInstructor = user?.user_type === "STAFF" || user?.user_type === "INSTRUCTOR";
   const canManage    = ["ADMIN","SUPER_ADMIN"].includes(user?.role) || ["INSTRUCTOR","STAFF"].includes(user?.user_type);
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
   // Search state — initialised from URL ?q=
   const [search,      setSearch]      = useState(searchParams.get("q") ?? "");
@@ -300,6 +373,10 @@ function CoursesContent() {
   const [searchResults,  setSearchResults]  = useState([]);
   const [browseLoading,  setBrowseLoading]  = useState(true);
   const [searchLoading,  setSearchLoading]  = useState(false);
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState(null); // course to confirm
+  const [deleteBusy,   setDeleteBusy]   = useState(false);
 
   const debounceRef = useRef(null);
   const isSearchMode = search.trim().length > 0;
@@ -350,6 +427,22 @@ function CoursesContent() {
     window.history.replaceState({}, "", window.location.pathname);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await deleteCourse(deleteTarget.id);
+      // Remove from whichever list currently holds the course
+      setBrowseCourses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setSearchResults((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   // Run initial search if page loaded with ?q=
   useEffect(() => {
     const q = searchParams.get("q") ?? "";
@@ -382,6 +475,16 @@ function CoursesContent() {
   ];
 
   return (
+    <>
+    {deleteTarget && (
+      <DeleteModal
+        course={deleteTarget}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+        busy={deleteBusy}
+        t={t}
+      />
+    )}
     <div className="max-w-[1280px] mx-auto space-y-6">
 
       {/* ── Header ── */}
@@ -533,7 +636,7 @@ function CoursesContent() {
           {loading
             ? Array.from({ length: 6 }).map((_, i) => <CourseSkeleton key={i} />)
             : displayedCourses.length > 0
-              ? displayedCourses.map((c, i) => <CourseCard key={c.id} course={c} index={i} canManage={canManage} />)
+              ? displayedCourses.map((c, i) => <CourseCard key={c.id} course={c} index={i} canManage={canManage} isSuperAdmin={isSuperAdmin} onDeleteClick={setDeleteTarget} />)
               : <EmptyState
                   t={t}
                   mineOnly={mineOnly}
@@ -568,7 +671,7 @@ function CoursesContent() {
                 {loading
                   ? Array.from({ length: 6 }).map((_, i) => <CourseRowSkeleton key={i} />)
                   : displayedCourses.length > 0
-                    ? displayedCourses.map((c, i) => <CourseRow key={c.id} course={c} index={i} canManage={canManage} />)
+                    ? displayedCourses.map((c, i) => <CourseRow key={c.id} course={c} index={i} canManage={canManage} isSuperAdmin={isSuperAdmin} onDeleteClick={setDeleteTarget} />)
                     : (
                       <tr>
                         <td colSpan={TABLE_COLS.length} className="px-4 py-10 text-center">
@@ -590,6 +693,7 @@ function CoursesContent() {
         </div>
       )}
     </div>
+    </>
   );
 }
 
