@@ -532,3 +532,97 @@ export async function fetchInstructorProfile(instructorId, lang = "en") {
     if (!res.ok) return null;
     return res.json();
 }
+
+// ── InstaPay ───────────────────────────────────────────────────────────────────
+
+export async function fetchInstapayInfo() {
+    const res = await apiFetch("/api/v1/instapay/info");
+    if (!res.ok) return null;
+    return res.json();
+}
+
+export async function uploadInstapayScreenshot(file, onProgress) {
+    const { getValidAccessToken } = await import("@/utils/auth");
+    const token = await getValidAccessToken();
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const form = new FormData();
+    form.append("file", file);
+
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${API_BASE}/api/v1/instapay/upload-screenshot`);
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+        if (onProgress) {
+            xhr.upload.addEventListener("progress", (e) => {
+                if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+            });
+        }
+
+        xhr.addEventListener("load", () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try { resolve(JSON.parse(xhr.responseText)); }
+                catch { reject({ status: xhr.status, body: {} }); }
+            } else {
+                try { reject({ status: xhr.status, body: JSON.parse(xhr.responseText) }); }
+                catch { reject({ status: xhr.status, body: {} }); }
+            }
+        });
+        xhr.addEventListener("error", () => reject({ status: 0, body: {} }));
+        xhr.send(form);
+    });
+}
+
+export async function submitInstapayRequest({ batch_id, discount_code, screenshot_url, payment_type = "FULL" }) {
+    const res = await apiFetch("/api/v1/instapay/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch_id, discount_code: discount_code || undefined, screenshot_url, payment_type }),
+    });
+    if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw { status: res.status, body: b };
+    }
+    return res.json();
+}
+
+export async function fetchInstapayStatusForCourse(courseId) {
+    const res = await apiFetch(`/api/v1/instapay/requests/course/${courseId}`);
+    if (!res.ok) return { has_pending: false, has_approved: false, status: null, request_id: null };
+    return res.json();
+}
+
+export async function fetchMyInstapayRequests() {
+    const res = await apiFetch("/api/v1/instapay/requests/me");
+    if (!res.ok) return [];
+    return res.json();
+}
+
+export async function fetchInstapayRequests(status) {
+    const params = status ? `?status=${status}` : "";
+    const res = await apiFetch(`/api/v1/instapay/requests${params}`);
+    if (!res.ok) return [];
+    return res.json();
+}
+
+export async function approveInstapayRequest(id) {
+    const res = await apiFetch(`/api/v1/instapay/requests/${id}/approve`, { method: "POST" });
+    if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw { status: res.status, body: b };
+    }
+    return res.json();
+}
+
+export async function rejectInstapayRequest(id, admin_note) {
+    const res = await apiFetch(`/api/v1/instapay/requests/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admin_note: admin_note || null }),
+    });
+    if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw { status: res.status, body: b };
+    }
+    return res.json();
+}

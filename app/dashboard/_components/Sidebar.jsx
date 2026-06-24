@@ -21,6 +21,7 @@ import {
   CalendarDays,
   CreditCard,
   Phone,
+  Smartphone,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { useUser } from "@/context/UserContext";
@@ -52,6 +53,7 @@ const adminNav = [
   { href: "/dashboard/monthly-payments",  labelKey: "dash_monthly_payments",  icon: CreditCard,         roles: ["ADMIN", "SUPER_ADMIN"] },
   { href: "/dashboard/testimonials",      labelKey: "dash_testimonials",      icon: MessageSquareQuote, roles: ["ADMIN", "SUPER_ADMIN"] },
   { href: "/dashboard/contact-info",      labelKey: "dash_contact_info",      icon: Phone,              roles: ["SUPER_ADMIN"]          },
+  { href: "/dashboard/instapay",          labelKey: "instapay_admin_title",   icon: Smartphone,         roles: ["ADMIN", "SUPER_ADMIN"] },
 ];
 
 export default function Sidebar({ onClose, role = "student", user }) {
