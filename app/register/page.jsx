@@ -7,6 +7,7 @@ import { AtSignIcon, CheckCircleIcon, EyeIcon, EyeOffIcon, LockIcon, MailIcon, U
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useGuestGuard } from "@/hooks/useAuthGuard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -19,6 +20,7 @@ const iconClass =
 
 export default function RegisterPage() {
     const { t } = useLocale();
+    const { ready } = useGuestGuard();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [firstName, setFirstName] = useState("");
@@ -61,6 +63,14 @@ export default function RegisterPage() {
             setLoading(false);
         }
     };
+
+    if (!ready) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+                <div className="w-8 h-8 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50 via-slate-100 to-cyan-50 dark:from-slate-950 dark:via-teal-950 dark:to-slate-900 py-16">

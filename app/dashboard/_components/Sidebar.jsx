@@ -23,6 +23,7 @@ import {
   Phone,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
+import { useUser } from "@/context/UserContext";
 import { logout } from "@/utils/auth";
 
 const studentNav = [
@@ -57,6 +58,7 @@ export default function Sidebar({ onClose, role = "student", user }) {
   const pathname = usePathname();
   const router   = useRouter();
   const { t }    = useLocale();
+  const { clearUser } = useUser();
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const filteredAdminNav = adminNav.filter(item => item.roles.includes(user?.role));
@@ -67,7 +69,8 @@ export default function Sidebar({ onClose, role = "student", user }) {
   const handleLogout = async () => {
     onClose();
     await logout();
-    router.push("/");
+    clearUser();
+    router.replace("/login");
   };
 
   return (

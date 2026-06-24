@@ -317,7 +317,7 @@ export const ar = {
     dash_subtitle_admin:   "إليك ما يحدث عبر المنصة اليوم.",
 
     // ── Dashboard — topbar ────────────────────────────────────────────
-    dash_search: "ابحث عن دورات، شهادات…",
+    dash_search: "ابحث عن دورات…",
     dash_notifications: "الإشعارات",
     dash_menu_wishlist: "قائمة الرغبات",
     dash_menu_profile:  "ملفي الشخصي",
@@ -1035,4 +1035,21 @@ export const ar = {
     // ── Contact section — dynamic labels ─────────────────────────────
     contact_phone_label:     "اتصل بنا",
     contact_whatsapp_label:  "واتساب",
+
+    // ── Search page ───────────────────────────────────────────────────
+    search_placeholder:      "ابحث عن الدورات…",
+    search_results_for:      "نتائج البحث عن",
+    search_no_results:       "لا توجد دورات",
+    search_no_results_desc:  "جرّب كلمات مختلفة أو تصفّح جميع الدورات.",
+    search_empty_hint:       "اكتب للبحث في الدورات بالعنوان أو الوصف.",
+    search_browse_all:       "تصفح جميع الدورات",
+    search_result_count:     "دورة",
+    search_result_count_pl:  "دورات",
+
+    // ── 404 Not Found ─────────────────────────────────────────────────
+    notfound_code:           "٤٠٤",
+    notfound_title:          "الصفحة غير موجودة",
+    notfound_desc:           "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
+    notfound_home:           "العودة للرئيسية",
+    notfound_courses:        "تصفح الدورات",
 };

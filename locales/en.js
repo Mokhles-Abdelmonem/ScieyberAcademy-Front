@@ -320,7 +320,7 @@ export const en = {
     dash_subtitle_admin:   "Here's what's happening across the platform today.",
 
     // ── Dashboard — topbar ────────────────────────────────────────────
-    dash_search: "Search courses, certificates…",
+    dash_search: "Search courses…",
     dash_notifications: "Notifications",
     dash_menu_wishlist: "Wishlist",
     dash_menu_profile:  "My Profile",
@@ -1036,4 +1036,21 @@ export const en = {
     // ── Contact section — dynamic labels ─────────────────────────────
     contact_phone_label:     "Call Us",
     contact_whatsapp_label:  "WhatsApp",
+
+    // ── Search page ───────────────────────────────────────────────────
+    search_placeholder:      "Search courses…",
+    search_results_for:      "Results for",
+    search_no_results:       "No courses found",
+    search_no_results_desc:  "Try different keywords or browse all courses.",
+    search_empty_hint:       "Type to search courses by title, description and more.",
+    search_browse_all:       "Browse all courses",
+    search_result_count:     "course found",
+    search_result_count_pl:  "courses found",
+
+    // ── 404 Not Found ─────────────────────────────────────────────────
+    notfound_code:           "404",
+    notfound_title:          "Page not found",
+    notfound_desc:           "The page you're looking for doesn't exist or has been moved.",
+    notfound_home:           "Back to home",
+    notfound_courses:        "Browse courses",
 };

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Menu, X, Search, ChevronDown,
   User as UserIcon, BookOpen, ListChecks, Award, Heart,
@@ -12,10 +12,11 @@ import {
 import Sidebar from "./_components/Sidebar";
 import { useThemeContext } from "@/context/ThemeContext";
 import { useLocale } from "@/context/LocaleContext";
-import { useUser } from "@/context/UserContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageToggle from "@/components/LanguageToggle";
 import { logout } from "@/utils/auth";
+import { useUser } from "@/context/UserContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 /* ── User menu definition ─────────────────────────────────────────── */
 
@@ -93,14 +94,26 @@ function HamburgerBtn({ sidebarOpen, onClick }) {
 }
 
 function SearchBar({ placeholder, isRTL }) {
+  const router = useRouter();
+  const [value, setValue] = useState("");
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && value.trim()) {
+      router.push(`/dashboard/courses?q=${encodeURIComponent(value.trim())}`);
+    }
+  };
+
   return (
     <div className="relative hidden sm:flex w-52 lg:w-72">
       <Search size={14} className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
         style={{ color: "var(--dt-muted)", [isRTL ? "right" : "left"]: "0.75rem" }} />
       <input
         type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="dash-glass w-full py-2 rounded-xl text-xs outline-none"
+        className="dash-glass w-full py-2 rounded-xl text-xs outline-none cursor-text"
         style={{
           color: "var(--dt-secondary)",
           background: "transparent",
@@ -121,12 +134,16 @@ export default function DashboardLayout({ children }) {
 
   const { theme }    = useThemeContext();
   const { t, isRTL } = useLocale();
-  const { user }     = useUser();
+  const { user, loading: authLoading } = useAuthGuard();
+  const { clearUser } = useUser();
   const router       = useRouter();
+  const pathname     = usePathname();
 
-  const userMenuRef = useRef(null);
-  const isLight     = theme === "light";
-  const isAdmin     = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const userMenuRef  = useRef(null);
+  const isLight      = theme === "light";
+  const isAdmin      = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  // Hide the navbar search bar on the courses page — it has its own search
+  const showNavSearch = pathname !== "/dashboard/courses";
 
   /* Click-outside — close user menu dropdown */
   useEffect(() => {
@@ -156,10 +173,20 @@ export default function DashboardLayout({ children }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Render nothing while resolving auth (redirect fires in useAuthGuard)
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+        <div className="w-8 h-8 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   const handleLogout = async () => {
     setUserMenuOpen(false);
     await logout();
-    router.push("/");
+    clearUser();
+    router.replace("/login");
   };
 
   const closeUserMenu = () => setUserMenuOpen(false);
@@ -367,13 +394,13 @@ export default function DashboardLayout({ children }) {
               <>
                 {ActionCluster}
                 <div className="flex-1" />
-                <SearchBar placeholder={t("dash_search")} isRTL={true} />
+                {showNavSearch && <SearchBar placeholder={t("dash_search")} isRTL={true} />}
                 <HamburgerBtn sidebarOpen={sidebarOpen} onClick={() => setSidebarOpen((v) => !v)} />
               </>
             ) : (
               <>
                 <HamburgerBtn sidebarOpen={sidebarOpen} onClick={() => setSidebarOpen((v) => !v)} />
-                <SearchBar placeholder={t("dash_search")} isRTL={false} />
+                {showNavSearch && <SearchBar placeholder={t("dash_search")} isRTL={false} />}
                 <div className="flex-1" />
                 {ActionCluster}
               </>

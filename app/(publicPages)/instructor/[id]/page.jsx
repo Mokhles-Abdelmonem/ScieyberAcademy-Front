@@ -172,7 +172,7 @@ function NotFound({ t }) {
 /* ── Page ────────────────────────────────────────────────────────── */
 
 export default function InstructorProfilePage({ params }) {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const [instructor, setInstructor] = useState(null);
     const [loading,    setLoading]    = useState(true);
     const [notFound,   setNotFound]   = useState(false);
@@ -180,13 +180,13 @@ export default function InstructorProfilePage({ params }) {
     useEffect(() => {
         const load = async () => {
             const { id } = await params;
-            const data = await fetchInstructorProfile(id);
+            const data = await fetchInstructorProfile(id, locale);
             if (!data) setNotFound(true);
             else       setInstructor(data);
             setLoading(false);
         };
         load();
-    }, [params]);
+    }, [params, locale]);
 
     if (loading)  return <SkeletonHero />;
     if (notFound) return <NotFound t={t} />;

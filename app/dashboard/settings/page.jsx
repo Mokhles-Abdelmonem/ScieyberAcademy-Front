@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   User, Bell, Palette, Shield,
   Camera, Save, Eye, EyeOff, Lock,
@@ -209,7 +210,8 @@ const TABS = [
 export default function SettingsPage() {
   const { t, locale, setLocale } = useLocale();
   const { theme, setTheme }       = useThemeContext();
-  const { user, setUser } = useUser();
+  const { user, setUser, clearUser } = useUser();
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState("profile");
 
@@ -320,7 +322,8 @@ export default function SettingsPage() {
   const handleLogoutAll = async () => {
     setLogoutLoading(true);
     await logoutAllSessions();
-    setLogoutLoading(false);
+    clearUser();
+    router.replace("/login");
   };
 
   // ── Avatar upload ─────────────────────────────────────────────────────

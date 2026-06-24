@@ -7,8 +7,8 @@ import { apiFetch } from "@/utils/auth";
 
 // ── Courses ────────────────────────────────────────────────────────────────────
 
-export async function fetchPublishedCourses({ offset = 0, limit = 50, level, my } = {}) {
-    const params = new URLSearchParams({ offset, limit });
+export async function fetchPublishedCourses({ offset = 0, limit = 50, level, my, lang = "en" } = {}) {
+    const params = new URLSearchParams({ offset, limit, lang });
     if (level) params.set("level", level);
     if (my)    params.set("my", "true");
     const res = await apiFetch(`/api/v1/courses?${params}`);
@@ -16,9 +16,17 @@ export async function fetchPublishedCourses({ offset = 0, limit = 50, level, my 
     return res.json();
 }
 
-export async function fetchCourse(courseId) {
-    const res = await apiFetch(`/api/v1/courses/${courseId}`);
+export async function fetchCourse(courseId, lang = "en") {
+    const res = await apiFetch(`/api/v1/courses/${courseId}?lang=${lang}`);
     if (!res.ok) return null;
+    return res.json();
+}
+
+export async function searchCourses({ q = "", lang = "en", limit = 20, offset = 0 } = {}) {
+    if (!q.trim()) return [];
+    const params = new URLSearchParams({ q: q.trim(), lang, limit, offset });
+    const res = await apiFetch(`/api/v1/courses/search?${params}`);
+    if (!res.ok) return [];
     return res.json();
 }
 
@@ -511,8 +519,8 @@ export async function adminUpdateContactInfo(data) {
 
 // ── Instructor Profile ─────────────────────────────────────────────────────────
 
-export async function fetchInstructorProfile(instructorId) {
-    const res = await apiFetch(`/api/v1/courses/instructors/${instructorId}`);
+export async function fetchInstructorProfile(instructorId, lang = "en") {
+    const res = await apiFetch(`/api/v1/courses/instructors/${instructorId}?lang=${lang}`);
     if (!res.ok) return null;
     return res.json();
 }

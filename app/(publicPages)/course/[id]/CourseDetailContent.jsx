@@ -195,7 +195,7 @@ function InstructorsSection({ instructors, t }) {
 /* ── Main component ────────────────────────────────────────────── */
 
 export default function CourseDetailContent({ courseId }) {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const { user } = useUser();
     const router = useRouter();
 
@@ -220,10 +220,10 @@ export default function CourseDetailContent({ courseId }) {
 
     useEffect(() => {
         setLoading(true);
-        fetchCourse(courseId)
+        fetchCourse(courseId, locale)
             .then(setCourse)
             .finally(() => setLoading(false));
-    }, [courseId]);
+    }, [courseId, locale]);
 
     useEffect(() => {
         if (isLoggedIn && courseId) {

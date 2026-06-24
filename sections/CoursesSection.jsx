@@ -329,17 +329,17 @@ function Dots({ total, active, onGo }) {
 /* ── Section ─────────────────────────────────────────────────────── */
 
 export default function CoursesSection() {
-    const { t } = useLocale();
+    const { t, locale } = useLocale();
     const [courses,     setCourses]     = useState([]);
     const [loading,     setLoading]     = useState(true);
     const [activeIndex, setActiveIndex] = useState(0);
 
     useEffect(() => {
-        fetchPublishedCourses({ limit: 10 })
+        fetchPublishedCourses({ limit: 10, lang: locale })
             .then(data => setCourses(Array.isArray(data) ? data : []))
             .catch(() => setCourses([]))
             .finally(() => setLoading(false));
-    }, []);
+    }, [locale]);
 
     const prev = useCallback(() =>
         setActiveIndex(i => (i - 1 + courses.length) % courses.length),

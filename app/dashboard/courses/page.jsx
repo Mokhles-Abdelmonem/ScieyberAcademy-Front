@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
-  BookOpen, Filter, Search, Clock, Users,
+  BookOpen, Filter, Search, Clock, Users, XCircle,
   ChevronRight, Wifi, Building2, Layers, GraduationCap, Plus,
-  LayoutGrid, LayoutList, CalendarDays,
+  LayoutGrid, LayoutList, CalendarDays, Loader2,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { useUser } from "@/context/UserContext";
-import { fetchPublishedCourses } from "@/utils/academyApi";
+import { fetchPublishedCourses, searchCourses } from "@/utils/academyApi";
 
 const LEVEL_COLOR = {
   BEGINNER:     { bg: "rgba(52,211,153,0.15)",  text: "#34d399", border: "rgba(52,211,153,0.3)"  },
@@ -64,7 +65,6 @@ function CourseCard({ course, index, canManage }) {
       className="dash-card p-5 flex flex-col dash-anim-up"
       style={{ animationDelay: `${index * 0.07}s` }}
     >
-      {/* Top row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {course.category_name && (
@@ -80,7 +80,6 @@ function CourseCard({ course, index, canManage }) {
         </span>
       </div>
 
-      {/* Title & description */}
       <h3 className="text-sm font-semibold leading-snug mb-1.5 line-clamp-2" style={{ color: "var(--dt-primary)" }}>
         {course.title}
       </h3>
@@ -93,7 +92,6 @@ function CourseCard({ course, index, canManage }) {
       <div className="flex-1" />
       <div className="dash-divider border-t my-3" />
 
-      {/* Meta row */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--dt-muted)" }}>
           <ModeIcon size={11} />
@@ -111,7 +109,6 @@ function CourseCard({ course, index, canManage }) {
         )}
       </div>
 
-      {/* Price + CTA */}
       <div className="flex items-center justify-between">
         <div>
           {Number(course.price) > 0 ? (
@@ -158,87 +155,56 @@ function CourseRow({ course, index, canManage }) {
   return (
     <tr
       className="dash-anim-up transition-colors duration-150"
-      style={{
-        animationDelay: `${index * 0.04}s`,
-        borderBottom: "1px solid var(--dash-border)",
-      }}
+      style={{ animationDelay: `${index * 0.04}s`, borderBottom: "1px solid var(--dash-border)" }}
       onMouseEnter={(e) => e.currentTarget.style.background = "rgba(var(--dash-border-a),0.04)"}
       onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
     >
-      {/* Course name + description */}
       <td className="px-4 py-3 min-w-[220px]">
-        <p className="text-sm font-semibold line-clamp-1" style={{ color: "var(--dt-primary)" }}>
-          {course.title}
-        </p>
+        <p className="text-sm font-semibold line-clamp-1" style={{ color: "var(--dt-primary)" }}>{course.title}</p>
         {course.short_description && (
-          <p className="text-[11px] line-clamp-1 mt-0.5" style={{ color: "var(--dt-muted)" }}>
-            {course.short_description}
-          </p>
+          <p className="text-[11px] line-clamp-1 mt-0.5" style={{ color: "var(--dt-muted)" }}>{course.short_description}</p>
         )}
       </td>
-
-      {/* Category */}
       <td className="px-4 py-3">
         {course.category_name ? (
           <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full whitespace-nowrap"
             style={{ background: "rgba(20,184,166,0.12)", color: "var(--dash-gradient-from)", border: "1px solid rgba(20,184,166,0.2)" }}>
             {course.category_name}
           </span>
-        ) : (
-          <span style={{ color: "var(--dt-muted)" }}>—</span>
-        )}
+        ) : <span style={{ color: "var(--dt-muted)" }}>—</span>}
       </td>
-
-      {/* Level */}
       <td className="px-4 py-3">
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
           style={{ background: level.bg, color: level.text, border: `1px solid ${level.border}` }}>
           {t(`dash_course_${course.level.toLowerCase()}`)}
         </span>
       </td>
-
-      {/* Delivery mode */}
       <td className="px-4 py-3">
         <span className="flex items-center gap-1.5 text-xs whitespace-nowrap" style={{ color: "var(--dt-muted)" }}>
-          <ModeIcon size={12} />
-          {t(`dash_course_mode_${course.delivery_mode.toLowerCase()}`)}
+          <ModeIcon size={12} /> {t(`dash_course_mode_${course.delivery_mode.toLowerCase()}`)}
         </span>
       </td>
-
-      {/* Duration */}
       <td className="px-4 py-3">
         {course.duration_weeks ? (
           <span className="flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: "var(--dt-muted)" }}>
             <Clock size={12} /> {course.duration_weeks} {t("dash_course_weeks")}
           </span>
-        ) : (
-          <span style={{ color: "var(--dt-muted)" }}>—</span>
-        )}
+        ) : <span style={{ color: "var(--dt-muted)" }}>—</span>}
       </td>
-
-      {/* Max students */}
       <td className="px-4 py-3">
         {course.max_students ? (
           <span className="flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: "var(--dt-muted)" }}>
             <Users size={12} /> {course.max_students}
           </span>
-        ) : (
-          <span style={{ color: "var(--dt-muted)" }}>—</span>
-        )}
+        ) : <span style={{ color: "var(--dt-muted)" }}>—</span>}
       </td>
-
-      {/* Price */}
       <td className="px-4 py-3">
         {Number(course.price) > 0 ? (
-          <span className="text-sm font-bold" style={{ color: "var(--dt-primary)" }}>
-            ${Number(course.price).toFixed(0)}
-          </span>
+          <span className="text-sm font-bold" style={{ color: "var(--dt-primary)" }}>${Number(course.price).toFixed(0)}</span>
         ) : (
           <span className="text-xs font-bold" style={{ color: "#34d399" }}>{t("dash_course_free")}</span>
         )}
       </td>
-
-      {/* Action */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           {canManage && (
@@ -263,39 +229,146 @@ function CourseRow({ course, index, canManage }) {
   );
 }
 
-/* ── Page ──────────────────────────────────────────────────────── */
+/* ── Empty state helpers ───────────────────────────────────────── */
 
-export default function CoursesPage() {
-  const { t }    = useLocale();
-  const { user } = useUser();
+function EmptyState({ t, mineOnly, isInstructor, onShowAll, isSearch, onClearSearch }) {
+  return (
+    <div className="col-span-full dash-card p-10 flex flex-col items-center gap-3 text-center">
+      <BookOpen size={32} style={{ color: "var(--dt-muted)" }} strokeWidth={1.2} />
+      <p className="text-sm font-medium" style={{ color: "var(--dt-secondary)" }}>
+        {isSearch ? t("search_no_results") : t("dash_no_courses")}
+      </p>
+      <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
+        {isSearch ? t("search_no_results_desc") : mineOnly ? t("dash_no_my_courses_desc") : t("dash_no_courses_desc")}
+      </p>
+      {isSearch && (
+        <button onClick={onClearSearch} className="mt-2 dash-pill-btn text-xs font-medium px-4 py-2" style={{ color: "var(--dt-secondary)" }}>
+          {t("dash_show_all_courses")}
+        </button>
+      )}
+      {!isSearch && mineOnly && !isInstructor && (
+        <button onClick={onShowAll} className="mt-2 dash-pill-btn text-xs font-medium px-4 py-2" style={{ color: "var(--dt-secondary)" }}>
+          {t("dash_show_all_courses")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EmptyStateInline({ t, mineOnly, isInstructor, onShowAll, isSearch, onClearSearch }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <BookOpen size={28} style={{ color: "var(--dt-muted)" }} strokeWidth={1.2} />
+      <p className="text-sm font-medium" style={{ color: "var(--dt-secondary)" }}>
+        {isSearch ? t("search_no_results") : t("dash_no_courses")}
+      </p>
+      <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
+        {isSearch ? t("search_no_results_desc") : mineOnly ? t("dash_no_my_courses_desc") : t("dash_no_courses_desc")}
+      </p>
+      {isSearch && (
+        <button onClick={onClearSearch} className="mt-1 dash-pill-btn text-xs font-medium px-4 py-2" style={{ color: "var(--dt-secondary)" }}>
+          {t("dash_show_all_courses")}
+        </button>
+      )}
+      {!isSearch && mineOnly && !isInstructor && (
+        <button onClick={onShowAll} className="mt-1 dash-pill-btn text-xs font-medium px-4 py-2" style={{ color: "var(--dt-secondary)" }}>
+          {t("dash_show_all_courses")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── Inner page (needs Suspense for useSearchParams) ───────────── */
+
+function CoursesContent() {
+  const { t, locale }  = useLocale();
+  const { user }       = useUser();
+  const searchParams   = useSearchParams();
 
   const isInstructor = user?.user_type === "STAFF" || user?.user_type === "INSTRUCTOR";
+  const canManage    = ["ADMIN","SUPER_ADMIN"].includes(user?.role) || ["INSTRUCTOR","STAFF"].includes(user?.user_type);
 
-  const [courses, setCourses]         = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState("");
+  // Search state — initialised from URL ?q=
+  const [search,      setSearch]      = useState(searchParams.get("q") ?? "");
   const [levelFilter, setLevelFilter] = useState("ALL");
-  const [mineOnly, setMineOnly]       = useState(false);
-  const [view, setView]               = useState("grid");
+  const [mineOnly,    setMineOnly]    = useState(false);
+  const [view,        setView]        = useState("grid");
+
+  // Data states
+  const [browseCourses,  setBrowseCourses]  = useState([]);
+  const [searchResults,  setSearchResults]  = useState([]);
+  const [browseLoading,  setBrowseLoading]  = useState(true);
+  const [searchLoading,  setSearchLoading]  = useState(false);
+
+  const debounceRef = useRef(null);
+  const isSearchMode = search.trim().length > 0;
 
   const LEVELS = ["ALL", "BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
+  /* ── Browse fetch (level + mine filters via API) ─────────────── */
   useEffect(() => {
-    setLoading(true);
+    if (isSearchMode) return; // search mode handles its own fetch
+    setBrowseLoading(true);
     fetchPublishedCourses({
       level: levelFilter !== "ALL" ? levelFilter : undefined,
       my:    mineOnly && !!user,
+      lang:  locale,
     }).then((data) => {
-      setCourses(data);
-      setLoading(false);
+      setBrowseCourses(data);
+      setBrowseLoading(false);
     });
-  }, [levelFilter, mineOnly, user]);
+  }, [levelFilter, mineOnly, user, locale, isSearchMode]);
 
-  const filtered = useMemo(() => {
-    if (!search) return courses;
-    const q = search.toLowerCase();
-    return courses.filter((c) => c.title.toLowerCase().includes(q));
-  }, [courses, search]);
+  /* ── DB search (debounced) ───────────────────────────────────── */
+  const runSearch = useCallback(async (q) => {
+    const term = q.trim();
+    if (!term) { setSearchResults([]); setSearchLoading(false); return; }
+    setSearchLoading(true);
+    const data = await searchCourses({ q: term, lang: locale, limit: 100 });
+    setSearchResults(data);
+    setSearchLoading(false);
+    // Sync URL without full navigation
+    const url = new URL(window.location.href);
+    url.searchParams.set("q", term);
+    window.history.replaceState({}, "", url.toString());
+  }, [locale]);
+
+  const handleSearchChange = (e) => {
+    const v = e.target.value;
+    setSearch(v);
+    if (!v.trim()) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => runSearch(v), 400);
+  };
+
+  const handleClearSearch = () => {
+    setSearch("");
+    setSearchResults([]);
+    window.history.replaceState({}, "", window.location.pathname);
+  };
+
+  // Run initial search if page loaded with ?q=
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    if (q) runSearch(q);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-run search when locale switches while searching
+  useEffect(() => {
+    if (isSearchMode) runSearch(search);
+  }, [locale]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Apply level filter client-side on search results ─────────── */
+  const displayedCourses = useMemo(() => {
+    const base = isSearchMode ? searchResults : browseCourses;
+    if (!isSearchMode || levelFilter === "ALL") return base;
+    return base.filter((c) => c.level === levelFilter);
+  }, [isSearchMode, searchResults, browseCourses, levelFilter]);
+
+  const loading = isSearchMode ? searchLoading : browseLoading;
 
   const TABLE_COLS = [
     t("dash_col_course"),
@@ -315,10 +388,18 @@ export default function CoursesPage() {
       <div className="flex items-start justify-between gap-4 dash-anim-up" style={{ animationDelay: "0s" }}>
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--dt-primary)" }}>
-            {mineOnly && isInstructor ? t("dash_my_assigned_courses") : t("dash_course_catalog")}
+            {isSearchMode
+              ? t("search_results_for") + " \"" + search.trim() + "\""
+              : mineOnly && isInstructor
+                ? t("dash_my_assigned_courses")
+                : t("dash_course_catalog")}
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--dt-muted)" }}>
-            {mineOnly && isInstructor ? t("dash_my_assigned_courses_desc") : t("dash_course_catalog_desc")}
+            {isSearchMode
+              ? null
+              : mineOnly && isInstructor
+                ? t("dash_my_assigned_courses_desc")
+                : t("dash_course_catalog_desc")}
           </p>
         </div>
         {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
@@ -342,15 +423,36 @@ export default function CoursesPage() {
             style={{ color: "var(--dt-muted)", insetInlineStart: "0.75rem" }} />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             placeholder={t("dash_search_courses")}
             className="dash-glass w-full py-2 rounded-xl text-xs outline-none"
-            style={{ color: "var(--dt-secondary)", background: "transparent", paddingInlineStart: "2.25rem", paddingInlineEnd: "1rem" }}
+            style={{
+              color: "var(--dt-secondary)",
+              background: "transparent",
+              paddingInlineStart: "2.25rem",
+              paddingInlineEnd: search ? "2.25rem" : "1rem",
+            }}
           />
+          {search && !searchLoading && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute top-1/2 -translate-y-1/2 transition-opacity hover:opacity-80"
+              style={{ insetInlineEnd: "0.6rem", color: "var(--dt-muted)" }}
+            >
+              <XCircle size={13} />
+            </button>
+          )}
+          {searchLoading && (
+            <Loader2
+              size={13}
+              className="absolute top-1/2 -translate-y-1/2 animate-spin"
+              style={{ insetInlineEnd: "0.6rem", color: "var(--dash-gradient-from)" }}
+            />
+          )}
         </div>
 
-        {/* "My Courses" toggle */}
-        {user && (
+        {/* "My Courses" toggle — hidden in search mode */}
+        {user && !isSearchMode && (
           <button
             onClick={() => setMineOnly((v) => !v)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold transition-all duration-150"
@@ -384,7 +486,6 @@ export default function CoursesPage() {
         <div
           className="flex items-center p-1 rounded-xl gap-0.5"
           style={{ background: "var(--dash-glass-bg)", border: "1px solid var(--dash-border)" }}
-          title={view === "grid" ? t("dash_view_list") : t("dash_view_grid")}
         >
           <button
             onClick={() => setView("grid")}
@@ -412,8 +513,13 @@ export default function CoursesPage() {
       {/* ── Count ── */}
       {!loading && (
         <p className="text-xs dash-anim-up" style={{ color: "var(--dt-muted)", animationDelay: "0.1s" }}>
-          {filtered.length} {t("dash_courses_found")}
-          {mineOnly && (
+          {displayedCourses.length} {t("dash_courses_found")}
+          {isSearchMode && (
+            <span className="ms-2 font-semibold" style={{ color: "var(--dash-gradient-from)" }}>
+              · {t("search_results_for")} &ldquo;{search.trim()}&rdquo;
+            </span>
+          )}
+          {!isSearchMode && mineOnly && (
             <span className="ms-2 font-semibold" style={{ color: "#a78bfa" }}>
               · {isInstructor ? t("dash_my_assigned_courses_short") : t("dash_mine_only")}
             </span>
@@ -426,9 +532,16 @@ export default function CoursesPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {loading
             ? Array.from({ length: 6 }).map((_, i) => <CourseSkeleton key={i} />)
-            : filtered.length > 0
-              ? filtered.map((c, i) => <CourseCard key={c.id} course={c} index={i} canManage={["ADMIN","SUPER_ADMIN"].includes(user?.role) || ["INSTRUCTOR","STAFF"].includes(user?.user_type)} />)
-              : <EmptyState t={t} mineOnly={mineOnly} isInstructor={isInstructor} onShowAll={() => setMineOnly(false)} colSpan={3} />
+            : displayedCourses.length > 0
+              ? displayedCourses.map((c, i) => <CourseCard key={c.id} course={c} index={i} canManage={canManage} />)
+              : <EmptyState
+                  t={t}
+                  mineOnly={mineOnly}
+                  isInstructor={isInstructor}
+                  onShowAll={() => setMineOnly(false)}
+                  isSearch={isSearchMode}
+                  onClearSearch={handleClearSearch}
+                />
           }
         </div>
       )}
@@ -454,12 +567,19 @@ export default function CoursesPage() {
               <tbody>
                 {loading
                   ? Array.from({ length: 6 }).map((_, i) => <CourseRowSkeleton key={i} />)
-                  : filtered.length > 0
-                    ? filtered.map((c, i) => <CourseRow key={c.id} course={c} index={i} canManage={["ADMIN","SUPER_ADMIN"].includes(user?.role) || ["INSTRUCTOR","STAFF"].includes(user?.user_type)} />)
+                  : displayedCourses.length > 0
+                    ? displayedCourses.map((c, i) => <CourseRow key={c.id} course={c} index={i} canManage={canManage} />)
                     : (
                       <tr>
                         <td colSpan={TABLE_COLS.length} className="px-4 py-10 text-center">
-                          <EmptyStateInline t={t} mineOnly={mineOnly} isInstructor={isInstructor} onShowAll={() => setMineOnly(false)} />
+                          <EmptyStateInline
+                            t={t}
+                            mineOnly={mineOnly}
+                            isInstructor={isInstructor}
+                            onShowAll={() => setMineOnly(false)}
+                            isSearch={isSearchMode}
+                            onClearSearch={handleClearSearch}
+                          />
                         </td>
                       </tr>
                     )
@@ -473,50 +593,12 @@ export default function CoursesPage() {
   );
 }
 
-/* ── Empty state helpers ───────────────────────────────────────── */
+/* ── Page (Suspense required for useSearchParams) ──────────────── */
 
-function EmptyState({ t, mineOnly, isInstructor, onShowAll, colSpan }) {
+export default function CoursesPage() {
   return (
-    <div className="col-span-full dash-card p-10 flex flex-col items-center gap-3 text-center">
-      <BookOpen size={32} style={{ color: "var(--dt-muted)" }} strokeWidth={1.2} />
-      <p className="text-sm font-medium" style={{ color: "var(--dt-secondary)" }}>
-        {t("dash_no_courses")}
-      </p>
-      <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
-        {mineOnly ? t("dash_no_my_courses_desc") : t("dash_no_courses_desc")}
-      </p>
-      {mineOnly && !isInstructor && (
-        <button
-          onClick={onShowAll}
-          className="mt-2 dash-pill-btn text-xs font-medium px-4 py-2"
-          style={{ color: "var(--dt-secondary)" }}
-        >
-          {t("dash_show_all_courses")}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function EmptyStateInline({ t, mineOnly, isInstructor, onShowAll }) {
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <BookOpen size={28} style={{ color: "var(--dt-muted)" }} strokeWidth={1.2} />
-      <p className="text-sm font-medium" style={{ color: "var(--dt-secondary)" }}>
-        {t("dash_no_courses")}
-      </p>
-      <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
-        {mineOnly ? t("dash_no_my_courses_desc") : t("dash_no_courses_desc")}
-      </p>
-      {mineOnly && !isInstructor && (
-        <button
-          onClick={onShowAll}
-          className="mt-1 dash-pill-btn text-xs font-medium px-4 py-2"
-          style={{ color: "var(--dt-secondary)" }}
-        >
-          {t("dash_show_all_courses")}
-        </button>
-      )}
-    </div>
+    <Suspense>
+      <CoursesContent />
+    </Suspense>
   );
 }

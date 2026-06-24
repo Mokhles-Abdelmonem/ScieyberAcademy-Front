@@ -5,6 +5,7 @@ import { useLocale } from "@/context/LocaleContext";
 import { parseApiError } from "@/utils/parseApiError";
 import { saveTokens } from "@/utils/auth";
 import { useUser } from "@/context/UserContext";
+import { useGuestGuard } from "@/hooks/useAuthGuard";
 import { EyeIcon, EyeOffIcon, LockIcon, UserIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,6 +18,7 @@ export default function LoginPage() {
     const { t } = useLocale();
     const router = useRouter();
     const { loadUser } = useUser();
+    const { ready } = useGuestGuard();
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -48,6 +50,14 @@ export default function LoginPage() {
             setLoading(false);
         }
     };
+
+    if (!ready) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+                <div className="w-8 h-8 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50 via-slate-100 to-cyan-50 dark:from-slate-950 dark:via-teal-950 dark:to-slate-900">
