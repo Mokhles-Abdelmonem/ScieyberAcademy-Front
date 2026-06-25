@@ -1123,4 +1123,30 @@ export const en = {
     instapay_per_month:       "/ month",
     instapay_months:          "months",
     instapay_action_error:    "Action failed. Please try again.",
+
+    // InstaPay — student my-requests page
+    instapay_my_title:        "My InstaPay Requests",
+    instapay_my_desc:         "Track the status of your InstaPay enrollment requests",
+    instapay_my_no_requests:  "You haven't submitted any InstaPay requests yet",
+    instapay_col_course:      "Course",
+    instapay_col_plan:        "Plan",
+    instapay_col_note:        "Note",
+    instapay_rejection_reason:"Rejection reason",
+    instapay_plan_full:       "Full",
+    instapay_plan_monthly:    "Monthly",
+
+    // Pay Installment modal
+    instapay_installment_title:      "Pay Installment",
+    instapay_installment_desc:       "Choose a payment method for this month's installment",
+    instapay_pay_with_card:          "Bank Card",
+    instapay_pay_with_card_desc:     "Pay securely with your debit or credit card",
+    instapay_pay_with_instapay:      "InstaPay",
+    instapay_pay_with_instapay_desc: "Transfer via InstaPay and upload screenshot",
+    instapay_installment_step1:      "Transfer Details",
+    instapay_installment_step2:      "Upload Receipt",
+    instapay_installment_amount:     "Amount to transfer",
+    instapay_installment_success:    "Installment request submitted! Admin will review within 24h.",
+    instapay_installment_type:       "Type",
+    instapay_type_enrollment:        "New Enrollment",
+    instapay_type_installment:       "Installment",
 };

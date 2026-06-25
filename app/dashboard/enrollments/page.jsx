@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   BookOpen, ChevronRight, CreditCard, Calendar,
   BarChart2, CheckCircle2, Clock, AlertCircle,
-  LayoutGrid, LayoutList,
+  LayoutGrid, LayoutList, X, Smartphone, Copy, Check,
+  Upload, Loader2, ArrowLeft,
 } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
-import { fetchMyEnrollments, payInstallment } from "@/utils/academyApi";
+import {
+  fetchMyEnrollments, payInstallment,
+  fetchInstapayInfo, uploadInstapayScreenshot, submitInstapayInstallment,
+} from "@/utils/academyApi";
 
 const STATUS_STYLE = {
   ACTIVE:    { bg: "rgba(20,184,166,0.15)",  text: "#14b8a6", border: "rgba(20,184,166,0.3)"  },
@@ -22,6 +26,297 @@ const PAYMENT_STYLE = {
   PARTIAL: { bg: "rgba(251,191,36,0.15)",  text: "#fbbf24" },
   PENDING: { bg: "rgba(248,113,113,0.15)", text: "#f87171" },
 };
+
+/* ── Pay Installment Modal ─────────────────────────────────────── */
+
+function PayInstallmentModal({ enrollment, onClose, onSuccess }) {
+  const { t } = useLocale();
+  const fileRef = useRef(null);
+
+  const [method, setMethod]             = useState(null); // null | "card" | "instapay"
+  const [step, setStep]                 = useState(1);    // 1 = transfer info, 2 = upload
+  const [phone, setPhone]               = useState(null);
+  const [copied, setCopied]             = useState(false);
+  const [screenshotUrl, setScreenshotUrl] = useState(null);
+  const [uploading, setUploading]       = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [sending, setSending]           = useState(false);
+  const [success, setSuccess]           = useState(false);
+  const [cardLoading, setCardLoading]   = useState(false);
+  const [error, setError]               = useState(null);
+
+  const amount = Number(enrollment.installment_amount ?? 0);
+
+  useEffect(() => {
+    fetchInstapayInfo().then((info) => setPhone(info?.phone ?? null));
+  }, []);
+
+  async function handleCardPay() {
+    setCardLoading(true);
+    setError(null);
+    try {
+      const res = await payInstallment(enrollment.id);
+      if (res.payment_url) {
+        sessionStorage.setItem("paymob_enrollment_id", enrollment.id);
+        window.location.href = res.payment_url;
+      }
+    } catch {
+      setError(t("instapay_action_error"));
+    } finally { setCardLoading(false); }
+  }
+
+  async function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadProgress(0);
+    setError(null);
+    try {
+      const result = await uploadInstapayScreenshot(file, setUploadProgress);
+      setScreenshotUrl(result.url);
+      setUploadProgress(100);
+    } catch {
+      setError(t("instapay_action_error"));
+    } finally { setUploading(false); }
+  }
+
+  async function handleSend() {
+    if (!screenshotUrl) return;
+    setSending(true);
+    setError(null);
+    try {
+      await submitInstapayInstallment(enrollment.id, screenshotUrl);
+      setSuccess(true);
+      onSuccess(enrollment.id);
+    } catch (err) {
+      const code = err?.body?.error_code;
+      if (code === "INSTAPAY_REQUEST_DUPLICATE") {
+        setSuccess(true);
+        onSuccess(enrollment.id);
+      } else {
+        setError(t("instapay_action_error"));
+      }
+    } finally { setSending(false); }
+  }
+
+  function copyPhone() {
+    if (phone) {
+      navigator.clipboard.writeText(phone).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(10px)" }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden bg-white dark:bg-slate-900"
+        style={{
+          border: "1px solid rgba(255,255,255,0.15)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.3)",
+        }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700/60">
+          <div className="flex items-center gap-2">
+            {method === "instapay" && step === 2 && (
+              <button onClick={() => setStep(1)} className="p-1 rounded-lg hover:opacity-70 transition me-1"
+                style={{ color: "var(--dt-muted)" }}>
+                <ArrowLeft size={16} />
+              </button>
+            )}
+            <h2 className="text-base font-bold" style={{ color: "var(--dt-primary)" }}>
+              {success ? t("instapay_success_title") : t("instapay_installment_title")}
+            </h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:opacity-70 transition"
+            style={{ color: "var(--dt-muted)" }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* ── Success state ── */}
+          {success && (
+            <div className="text-center py-6 space-y-3">
+              <div className="w-14 h-14 rounded-full bg-teal-500/10 flex items-center justify-center mx-auto">
+                <Check size={28} className="text-teal-500" />
+              </div>
+              <p className="text-sm font-medium" style={{ color: "var(--dt-primary)" }}>
+                {t("instapay_installment_success")}
+              </p>
+            </div>
+          )}
+
+          {/* ── Method selection ── */}
+          {!success && method === null && (
+            <>
+              <p className="text-sm" style={{ color: "var(--dt-muted)" }}>
+                {t("instapay_installment_desc")}
+              </p>
+              <div className="text-xs font-semibold mb-0.5" style={{ color: "var(--dt-muted)" }}>
+                {t("instapay_installment_amount")}:
+                <span className="ms-2 text-base font-bold" style={{ color: "var(--dt-primary)" }}>
+                  {amount.toLocaleString()} EGP
+                </span>
+              </div>
+
+              <button onClick={handleCardPay} disabled={cardLoading}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:border-teal-400 transition-all duration-150 text-start disabled:opacity-60">
+                <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                  {cardLoading
+                    ? <Loader2 size={18} className="text-blue-500 animate-spin" />
+                    : <CreditCard size={18} className="text-blue-500" />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--dt-primary)" }}>
+                    {t("instapay_pay_with_card")}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
+                    {t("instapay_pay_with_card_desc")}
+                  </p>
+                </div>
+              </button>
+
+              <button onClick={() => setMethod("instapay")}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:border-teal-400 transition-all duration-150 text-start">
+                <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
+                  <Smartphone size={18} className="text-teal-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--dt-primary)" }}>
+                    {t("instapay_pay_with_instapay")}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--dt-muted)" }}>
+                    {t("instapay_pay_with_instapay_desc")}
+                  </p>
+                </div>
+              </button>
+            </>
+          )}
+
+          {/* ── InstaPay: Step 1 — transfer info ── */}
+          {!success && method === "instapay" && step === 1 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--dt-muted)" }}>
+                {t("instapay_installment_step1")}
+              </p>
+
+              {/* Amount box */}
+              <div className="rounded-xl px-4 py-3 text-center"
+                style={{ background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)" }}>
+                <p className="text-xs mb-1" style={{ color: "var(--dt-muted)" }}>
+                  {t("instapay_installment_amount")}
+                </p>
+                <p className="text-2xl font-bold" style={{ color: "#14b8a6" }}>
+                  {amount.toLocaleString()} EGP
+                </p>
+              </div>
+
+              {/* Phone number */}
+              <div className="rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <p className="text-xs mb-1.5" style={{ color: "var(--dt-muted)" }}>
+                  {t("instapay_phone_label") ?? "InstaPay Number"}
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-lg font-bold tracking-wide" style={{ color: "var(--dt-primary)", direction: "ltr" }}>
+                    {phone ?? "—"}
+                  </span>
+                  <button onClick={copyPhone}
+                    className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-150"
+                    style={{
+                      background: copied ? "rgba(20,184,166,0.15)" : "rgba(20,184,166,0.08)",
+                      color: "#14b8a6",
+                      border: "1px solid rgba(20,184,166,0.2)",
+                    }}>
+                    {copied ? <Check size={12} /> : <Copy size={12} />}
+                    {copied ? t("instapay_copied") ?? "Copied!" : t("instapay_copy") ?? "Copy"}
+                  </button>
+                </div>
+              </div>
+
+              <button onClick={() => setStep(2)}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition"
+                style={{ background: "linear-gradient(135deg,#14b8a6,#0891b2)" }}>
+                {t("instapay_next") ?? "Next"} →
+              </button>
+            </>
+          )}
+
+          {/* ── InstaPay: Step 2 — upload receipt ── */}
+          {!success && method === "instapay" && step === 2 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--dt-muted)" }}>
+                {t("instapay_installment_step2")}
+              </p>
+
+              <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={handleFileChange} />
+
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className={`w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed transition-all duration-150 ${
+                  screenshotUrl
+                    ? "border-teal-400 bg-teal-50 dark:bg-teal-900/20"
+                    : "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/40 hover:border-slate-400 dark:hover:border-slate-500"
+                }`}>
+                {screenshotUrl
+                  ? <Check size={24} className="text-teal-500" />
+                  : <Upload size={24} />}
+                <p className="text-sm font-medium" style={{ color: screenshotUrl ? "#14b8a6" : "var(--dt-muted)" }}>
+                  {screenshotUrl
+                    ? (t("instapay_screenshot_uploaded") ?? "Screenshot uploaded")
+                    : (t("instapay_upload_screenshot") ?? "Upload screenshot")}
+                </p>
+              </button>
+
+              {/* Upload progress bar */}
+              {uploading && (
+                <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(20,184,166,0.08)" }}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 font-medium">
+                      <Loader2 size={11} className="animate-spin" />
+                      {t("instapay_uploading")}
+                    </span>
+                    <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
+                      {uploadProgress}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(20,184,166,0.2)" }}>
+                    <div className="h-full rounded-full transition-all duration-200"
+                      style={{ width: `${uploadProgress}%`, background: "linear-gradient(90deg,#0d9488,#0891b2)" }} />
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <p className="text-xs text-red-500 dark:text-red-400">{error}</p>
+              )}
+
+              <button
+                onClick={handleSend}
+                disabled={!screenshotUrl || uploading || sending}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg,#14b8a6,#0891b2)" }}>
+                {sending
+                  ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> {t("instapay_sending") ?? "Sending…"}</span>
+                  : (t("instapay_send_request") ?? "Send Request")}
+              </button>
+            </>
+          )}
+
+          {/* Card error */}
+          {!success && method === null && error && (
+            <p className="text-xs text-red-500 dark:text-red-400">{error}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 /* ── Skeletons ─────────────────────────────────────────────────── */
 
@@ -57,9 +352,8 @@ function EnrollmentRowSkeleton() {
 
 /* ── Grid card ─────────────────────────────────────────────────── */
 
-function EnrollmentCard({ enrollment, index, onInstallmentPaid }) {
+function EnrollmentCard({ enrollment, index, onOpenPayModal }) {
   const { t } = useLocale();
-  const [payingInstallment, setPayingInstallment] = useState(false);
   const status  = STATUS_STYLE[enrollment.status]   ?? STATUS_STYLE.PENDING;
   const payment = PAYMENT_STYLE[enrollment.payment_status] ?? PAYMENT_STYLE.PENDING;
 
@@ -67,19 +361,6 @@ function EnrollmentCard({ enrollment, index, onInstallmentPaid }) {
   const paidInstallments = isMonthlyPartial && enrollment.installment_amount > 0
     ? Math.floor(Number(enrollment.paid_amount) / Number(enrollment.installment_amount))
     : null;
-
-  async function handlePayInstallment() {
-    setPayingInstallment(true);
-    try {
-      const res = await payInstallment(enrollment.id);
-      if (res.payment_url) {
-        sessionStorage.setItem("paymob_enrollment_id", enrollment.id);
-        window.location.href = res.payment_url;
-      }
-    } catch {
-      // silent — let user retry
-    } finally { setPayingInstallment(false); }
-  }
 
   const progress  = enrollment.progress?.completion_percentage ?? 0;
   const attended  = enrollment.progress?.sessions_attended ?? 0;
@@ -178,9 +459,9 @@ function EnrollmentCard({ enrollment, index, onInstallmentPaid }) {
         </span>
         <div className="flex items-center gap-1.5">
           {isMonthlyPartial && (
-            <button onClick={handlePayInstallment} disabled={payingInstallment}
-              className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white transition">
-              {payingInstallment ? <Clock size={11} className="animate-spin" /> : <CreditCard size={11} />}
+            <button onClick={() => onOpenPayModal(enrollment)}
+              className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white transition">
+              <CreditCard size={11} />
               {t("dash_pay_installment")}
             </button>
           )}
@@ -199,25 +480,12 @@ function EnrollmentCard({ enrollment, index, onInstallmentPaid }) {
 
 /* ── List row ──────────────────────────────────────────────────── */
 
-function EnrollmentRow({ enrollment, index }) {
+function EnrollmentRow({ enrollment, index, onOpenPayModal }) {
   const { t } = useLocale();
-  const [payingInstallment, setPayingInstallment] = useState(false);
   const status  = STATUS_STYLE[enrollment.status]          ?? STATUS_STYLE.PENDING;
   const payment = PAYMENT_STYLE[enrollment.payment_status] ?? PAYMENT_STYLE.PENDING;
 
   const isMonthlyPartial = enrollment.payment_type === "MONTHLY" && enrollment.payment_status === "PARTIAL";
-
-  async function handlePayInstallment() {
-    setPayingInstallment(true);
-    try {
-      const res = await payInstallment(enrollment.id);
-      if (res.payment_url) {
-        sessionStorage.setItem("paymob_enrollment_id", enrollment.id);
-        window.location.href = res.payment_url;
-      }
-    } catch {
-    } finally { setPayingInstallment(false); }
-  }
 
   const progress  = enrollment.progress?.completion_percentage ?? 0;
   const attended  = enrollment.progress?.sessions_attended ?? 0;
@@ -300,9 +568,9 @@ function EnrollmentRow({ enrollment, index }) {
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           {isMonthlyPartial && (
-            <button onClick={handlePayInstallment} disabled={payingInstallment}
-              className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white transition whitespace-nowrap">
-              {payingInstallment ? <Clock size={11} className="animate-spin" /> : <CreditCard size={11} />}
+            <button onClick={() => onOpenPayModal(enrollment)}
+              className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white transition whitespace-nowrap">
+              <CreditCard size={11} />
               {t("dash_pay_installment")}
             </button>
           )}
@@ -328,6 +596,18 @@ export default function EnrollmentsPage() {
   const [loading, setLoading]               = useState(true);
   const [filter, setFilter]                 = useState("ALL");
   const [view, setView]                     = useState("grid");
+  const [payModal, setPayModal]             = useState(null); // enrollment | null
+
+  function openPayModal(enrollment) { setPayModal(enrollment); }
+  function closePayModal() { setPayModal(null); }
+
+  function handleInstallmentSubmitted(enrollmentId) {
+    // Mark the enrollment as having a pending instapay installment (no more button)
+    // We can't change paid_amount yet (pending approval), but we hide the button
+    // by temporarily treating the enrollment as if it's awaiting review.
+    // Simplest: just close the modal — admin approval will update the actual state.
+    closePayModal();
+  }
 
   useEffect(() => {
     fetchMyEnrollments().then((data) => setAllEnrollments(data));
@@ -451,7 +731,7 @@ export default function EnrollmentsPage() {
           {loading
             ? Array.from({ length: 3 }).map((_, i) => <EnrollmentSkeleton key={i} />)
             : enrollments.length > 0
-              ? enrollments.map((e, i) => <EnrollmentCard key={e.id} enrollment={e} index={i} />)
+              ? enrollments.map((e, i) => <EnrollmentCard key={e.id} enrollment={e} index={i} onOpenPayModal={openPayModal} />)
               : (
                 <div className="col-span-full dash-card p-10 flex flex-col items-center gap-3 text-center">
                   <BookOpen size={32} style={{ color: "var(--dt-muted)" }} strokeWidth={1.2} />
@@ -496,7 +776,7 @@ export default function EnrollmentsPage() {
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => <EnrollmentRowSkeleton key={i} />)
                   : enrollments.length > 0
-                    ? enrollments.map((e, i) => <EnrollmentRow key={e.id} enrollment={e} index={i} />)
+                    ? enrollments.map((e, i) => <EnrollmentRow key={e.id} enrollment={e} index={i} onOpenPayModal={openPayModal} />)
                     : (
                       <tr>
                         <td colSpan={TABLE_COLS.length} className="px-4 py-10 text-center">
@@ -524,6 +804,15 @@ export default function EnrollmentsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* ── Pay Installment Modal ── */}
+      {payModal && (
+        <PayInstallmentModal
+          enrollment={payModal}
+          onClose={closePayModal}
+          onSuccess={handleInstallmentSubmitted}
+        />
       )}
     </div>
   );

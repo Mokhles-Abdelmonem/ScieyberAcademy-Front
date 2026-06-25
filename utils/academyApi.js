@@ -586,6 +586,19 @@ export async function submitInstapayRequest({ batch_id, discount_code, screensho
     return res.json();
 }
 
+export async function submitInstapayInstallment(enrollmentId, screenshotUrl) {
+    const res = await apiFetch("/api/v1/instapay/installments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enrollment_id: enrollmentId, screenshot_url: screenshotUrl }),
+    });
+    if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw { status: res.status, body: b };
+    }
+    return res.json();
+}
+
 export async function fetchInstapayStatusForCourse(courseId) {
     const res = await apiFetch(`/api/v1/instapay/requests/course/${courseId}`);
     if (!res.ok) return { has_pending: false, has_approved: false, status: null, request_id: null };

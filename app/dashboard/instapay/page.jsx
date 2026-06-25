@@ -195,10 +195,12 @@ export default function InstapayAdminPage() {
                                     <th className="text-start px-5 py-3 font-semibold">{t("instapay_col_student")}</th>
                                     <th className="text-start px-5 py-3 font-semibold">{t("dash_my_courses")}</th>
                                     <th className="text-start px-5 py-3 font-semibold">{t("dash_batches")}</th>
+                                    <th className="text-start px-5 py-3 font-semibold">{t("instapay_installment_type")}</th>
                                     <th className="text-start px-5 py-3 font-semibold">{t("instapay_col_amount")}</th>
                                     <th className="text-start px-5 py-3 font-semibold">{t("instapay_col_screenshot")}</th>
                                     <th className="text-start px-5 py-3 font-semibold">{t("instapay_col_submitted")}</th>
                                     <th className="text-start px-5 py-3 font-semibold">{t("instapay_col_status")}</th>
+                                    <th className="text-start px-5 py-3 font-semibold">{t("instapay_col_note")}</th>
                                     <th className="px-5 py-3" />
                                 </tr>
                             </thead>
@@ -226,9 +228,28 @@ export default function InstapayAdminPage() {
                                             {req.batch_name ?? "—"}
                                         </td>
 
+                                        {/* Type */}
+                                        <td className="px-5 py-3.5">
+                                            <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md border ${
+                                                req.enrollment_id
+                                                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/40"
+                                                    : "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/40"
+                                            }`}>
+                                                {req.enrollment_id ? t("instapay_type_installment") : t("instapay_type_enrollment")}
+                                            </span>
+                                        </td>
+
                                         {/* Amount */}
                                         <td className="px-5 py-3.5 whitespace-nowrap">
-                                            {req.payment_type === "MONTHLY" && req.installment_count ? (
+                                            {req.enrollment_id ? (
+                                                // Installment payment — final_amount is already one installment
+                                                <div>
+                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">
+                                                        {Number(req.final_amount).toLocaleString()} EGP
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400">{t("instapay_per_month")}</p>
+                                                </div>
+                                            ) : req.payment_type === "MONTHLY" && req.installment_count ? (
                                                 <div>
                                                     <p className="font-semibold text-slate-700 dark:text-slate-200">
                                                         {Math.ceil(Number(req.final_amount) / req.installment_count).toLocaleString()} EGP
@@ -265,10 +286,16 @@ export default function InstapayAdminPage() {
                                         {/* Status */}
                                         <td className="px-5 py-3.5">
                                             <StatusBadge status={req.status} />
-                                            {req.status === "REJECTED" && req.admin_note && (
-                                                <p className="text-xs text-slate-400 mt-1 max-w-[120px] truncate" title={req.admin_note}>
+                                        </td>
+
+                                        {/* Admin note */}
+                                        <td className="px-5 py-3.5 max-w-[180px]">
+                                            {req.admin_note ? (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate" title={req.admin_note}>
                                                     {req.admin_note}
                                                 </p>
+                                            ) : (
+                                                <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                                             )}
                                         </td>
 

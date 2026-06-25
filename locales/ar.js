@@ -1122,4 +1122,30 @@ export const ar = {
     instapay_per_month:       "/ شهر",
     instapay_months:          "شهور",
     instapay_action_error:    "فشل تنفيذ الإجراء. حاول مرة أخرى.",
+
+    // InstaPay — student my-requests page
+    instapay_my_title:        "طلبات InstaPay الخاصة بي",
+    instapay_my_desc:         "تتبع حالة طلبات التسجيل عبر InstaPay",
+    instapay_my_no_requests:  "لم تقدّم أي طلبات InstaPay بعد",
+    instapay_col_course:      "الكورس",
+    instapay_col_plan:        "الخطة",
+    instapay_col_note:        "ملاحظة",
+    instapay_rejection_reason:"سبب الرفض",
+    instapay_plan_full:       "كاملة",
+    instapay_plan_monthly:    "شهري",
+
+    // Pay Installment modal
+    instapay_installment_title:      "دفع القسط",
+    instapay_installment_desc:       "اختر طريقة الدفع لقسط هذا الشهر",
+    instapay_pay_with_card:          "بطاقة بنكية",
+    instapay_pay_with_card_desc:     "ادفع بأمان ببطاقة الخصم أو الائتمان",
+    instapay_pay_with_instapay:      "إنستاباي",
+    instapay_pay_with_instapay_desc: "حوّل عبر إنستاباي وارفع صورة الإيصال",
+    instapay_installment_step1:      "تفاصيل التحويل",
+    instapay_installment_step2:      "رفع الإيصال",
+    instapay_installment_amount:     "المبلغ المطلوب تحويله",
+    instapay_installment_success:    "تم إرسال طلب القسط! سيراجعه المشرف خلال 24 ساعة.",
+    instapay_installment_type:       "النوع",
+    instapay_type_enrollment:        "تسجيل جديد",
+    instapay_type_installment:       "قسط شهري",
 };

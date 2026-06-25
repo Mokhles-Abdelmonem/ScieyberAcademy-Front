@@ -28,12 +28,13 @@ import { useUser } from "@/context/UserContext";
 import { logout } from "@/utils/auth";
 
 const studentNav = [
-  { href: "/dashboard",                 labelKey: "dash_overview",      icon: LayoutDashboard     },
-  { href: "/dashboard/courses",         labelKey: "dash_my_courses",    icon: BookOpen             },
-  { href: "/dashboard/enrollments",     labelKey: "dash_enrollments",   icon: ListChecks           },
-  { href: "/dashboard/certificates",    labelKey: "dash_certificates",  icon: Award                },
-  { href: "/dashboard/wishlist",        labelKey: "dash_wishlist",      icon: Heart                },
-  { href: "/dashboard/testimonials",    labelKey: "dash_testimonials",  icon: MessageSquareQuote   },
+  { href: "/dashboard",                  labelKey: "dash_overview",      icon: LayoutDashboard     },
+  { href: "/dashboard/courses",          labelKey: "dash_my_courses",    icon: BookOpen             },
+  { href: "/dashboard/enrollments",      labelKey: "dash_enrollments",   icon: ListChecks           },
+  { href: "/dashboard/certificates",     labelKey: "dash_certificates",  icon: Award                },
+  { href: "/dashboard/wishlist",         labelKey: "dash_wishlist",      icon: Heart                },
+  { href: "/dashboard/testimonials",     labelKey: "dash_testimonials",  icon: MessageSquareQuote   },
+  { href: "/dashboard/my-instapay",      labelKey: "instapay_my_title",  icon: Smartphone           },
 ];
 
 const teacherNav = [
